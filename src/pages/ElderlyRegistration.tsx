@@ -1,174 +1,176 @@
-import React, { useState, useEffect } from 'react';
-import { ArrowLeft, Camera, Save, Loader2 } from 'lucide-react';
-import { supabase } from '../supabase';
+import React, { useState } from 'react';
+import { 
+  ArrowLeft, 
+  User, 
+  Calendar, 
+  Droplets, 
+  Activity, 
+  FileText, 
+  ChevronRight,
+  Heart,
+  ShieldAlert
+} from 'lucide-react';
 
-interface Props {
+interface ElderlyRegistrationProps {
   onBack: () => void;
-  onNext: (name: string, gender: string) => void; // Agora aceita o gênero também
+  onNext: (data: any) => void;
+  dadosIniciais: any;
 }
 
-export default function ElderlyRegistration({ onBack, onNext }: Props) {
-  const [nome, setNome] = useState('');
-  const [dataNasc, setDataNasc] = useState('');
-  const [idade, setIdade] = useState<number | null>(null);
-  const [sexo, setSexo] = useState('');
-  const [foto, setFoto] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
-
-  useEffect(() => {
-    if (dataNasc) {
-      const hoje = new Date();
-      const nascimento = new Date(dataNasc + 'T00:00:00');
-      let idadeCalculada = hoje.getFullYear() - nascimento.getFullYear();
-      const m = hoje.getMonth() - nascimento.getMonth();
-      if (m < 0 || (m === 0 && hoje.getDate() < nascimento.getDate()))
-        idadeCalculada--;
-      setIdade(idadeCalculada);
-    }
-  }, [dataNasc]);
-
-  const handleSave = async () => {
-    if (!nome || !dataNasc || !sexo) {
-      alert('Por favor, preencha os campos obrigatórios.');
-      return;
-    }
-    setLoading(true);
-    try {
-      const { error } = await supabase.from('elderly_profiles').insert([
-        {
-          full_name: nome,
-          birth_date: dataNasc,
-          gender: sexo === 'Feminino' ? 'female' : 'male',
-          age: idade,
-        },
-      ]);
-      if (error) throw error;
-
-      // AQUI A MUDANÇA: Passamos nome e sexo
-      onNext(nome, sexo);
-    } catch (e: any) {
-      alert('Erro ao salvar: ' + e.message);
-    } finally {
-      setLoading(false);
-    }
-  };
+export default function ElderlyRegistration({ onBack, onNext, dadosIniciais }: ElderlyRegistrationProps) {
+  // Mantendo o estado para salvar o que já foi feito
+  const [nome, setNome] = useState(dadosIniciais?.nome || '');
+  const [genero, setGenero] = useState(dadosIniciais?.genero || 'masculino');
+  const [dataNascimento, setDataNascimento] = useState(dadosIniciais?.dataNascimento || '');
+  const [sangue, setSangue] = useState(dadosIniciais?.sangue || '');
+  const [rh, setRh] = useState(dadosIniciais?.rh || '+');
+  const [obs, setObs] = useState(dadosIniciais?.obs || '');
 
   return (
-    <div className="min-h-screen bg-[#FAF8F4] p-6 font-sans">
-      <button
-        onClick={onBack}
-        className="flex items-center gap-2 text-[#4A7FA5] font-bold mb-8"
-      >
-        <ArrowLeft size={20} /> Voltar
-      </button>
-
-      <div className="max-w-md mx-auto">
-        <h2 className="text-3xl font-black text-[#2D3142] mb-2 text-center">
-          Perfil do Idoso
-        </h2>
-        <p className="text-[#6B7280] mb-8 font-medium text-center">
-          Conte-nos quem vamos cuidar juntos.
-        </p>
-
-        <div className="flex flex-col items-center mb-10">
-          <div className="w-32 h-32 rounded-full border-4 border-white shadow-xl bg-slate-200 flex items-center justify-center overflow-hidden mb-4 relative group">
-            {foto ? (
-              <img src={foto} className="w-full h-full object-cover" />
-            ) : (
-              <Camera size={40} className="text-slate-400" />
-            )}
-            <label className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 cursor-pointer transition-opacity">
-              <span className="text-white text-[10px] font-black uppercase">
-                Alterar Foto
-              </span>
-              <input
-                type="file"
-                hidden
-                accept="image/*"
-                onChange={(e) => {
-                  const file = e.target.files?.[0];
-                  if (file) {
-                    const reader = new FileReader();
-                    reader.onloadend = () => setFoto(reader.result as string);
-                    reader.readAsDataURL(file);
-                  }
-                }}
-              />
-            </label>
+    <div className="min-h-screen bg-[#FAF8F4] font-sans pb-12 overflow-x-hidden animate-in fade-in duration-500">
+      {/* HEADER ESTILIZADO ORIGINAL */}
+      <header className="p-8 pb-4">
+        <button 
+          onClick={onBack}
+          className="mb-8 flex items-center text-[#4A7FA5] font-black uppercase text-[10px] tracking-[0.3em] group active:scale-95 transition-all"
+        >
+          <div className="w-8 h-8 rounded-full bg-white shadow-sm flex items-center justify-center mr-3 group-hover:bg-[#4A7FA5] group-hover:text-white transition-colors">
+            <ArrowLeft size={14} />
           </div>
-          <p className="text-[10px] font-black text-[#4A7FA5] uppercase tracking-tighter">
-            Foto do Idoso
+          Voltar
+        </button>
+
+        <div className="space-y-1">
+          <p className="text-[#4A7FA5] text-[10px] font-black uppercase tracking-[0.2em] opacity-70">
+            Passo 01 de 03
+          </p>
+          <h1 className="text-4xl font-black text-[#2D3142] tracking-tighter italic leading-none">
+            Perfil do <span className="text-[#E8A87C]">Idoso</span>
+          </h1>
+          <p className="text-slate-400 text-sm font-medium leading-relaxed max-w-[280px] pt-2">
+            Insira as informações básicas para personalizarmos o cuidado.
           </p>
         </div>
+      </header>
 
-        <div className="space-y-6">
-          <div className="bg-white p-2 rounded-2xl shadow-sm">
-            <label className="block text-[10px] font-black text-[#6B7280] uppercase ml-3 mt-1">
-              Nome Completo
-            </label>
-            <input
-              type="text"
-              value={nome}
-              onChange={(e) => setNome(e.target.value)}
-              placeholder="Ex: Maria da Silva"
-              className="w-full p-3 outline-none font-bold text-lg"
-            />
+      <div className="px-8 mt-6 space-y-8">
+        {/* SEÇÃO: IDENTIFICAÇÃO BÁSICA */}
+        <section className="space-y-4">
+          <div className="flex items-center gap-2 mb-2 ml-2">
+            <User size={14} className="text-[#4A7FA5]" />
+            <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Identificação</span>
           </div>
-
-          <div className="grid grid-cols-2 gap-4">
-            <div className="bg-white p-2 rounded-2xl shadow-sm">
-              <label className="block text-[10px] font-black text-[#6B7280] uppercase ml-3 mt-1">
-                Nascimento
-              </label>
-              <input
-                type="date"
-                value={dataNasc}
-                onChange={(e) => setDataNasc(e.target.value)}
-                className="w-full p-3 outline-none font-bold"
+          
+          <div className="bg-white p-6 rounded-[2.5rem] shadow-xl shadow-slate-200/50 space-y-4 border border-white">
+            <div className="space-y-2">
+              <label className="text-[9px] font-black text-[#4A7FA5] uppercase ml-2 tracking-widest">Nome Completo</label>
+              <input 
+                type="text"
+                placeholder="Ex: Albert Einstein"
+                className="w-full p-5 rounded-2xl bg-[#FAF8F4] border-2 border-transparent focus:border-[#4A7FA5] focus:bg-white outline-none font-bold text-[#2D3142] transition-all placeholder:text-slate-300 shadow-inner"
+                value={nome}
+                onChange={(e) => setNome(e.target.value)}
               />
             </div>
-            <div className="bg-[#4A7FA5]/5 p-2 rounded-2xl border-2 border-[#4A7FA5]/10 flex flex-col justify-center items-center font-black text-[#4A7FA5]">
-              <span className="text-[10px] uppercase">Idade</span>
-              <span className="text-xl">
-                {idade !== null ? `${idade} anos` : '--'}
-              </span>
+
+            <div className="grid grid-cols-2 gap-3">
+              <button 
+                onClick={() => setGenero('masculino')}
+                className={`p-4 rounded-2xl font-black text-[10px] uppercase tracking-widest transition-all ${
+                  genero === 'masculino' 
+                  ? 'bg-[#4A7FA5] text-white shadow-lg shadow-[#4A7FA5]/30 scale-[1.02]' 
+                  : 'bg-[#FAF8F4] text-slate-400 grayscale opacity-60'
+                }`}
+              >
+                Masculino
+              </button>
+              <button 
+                onClick={() => setGenero('feminino')}
+                className={`p-4 rounded-2xl font-black text-[10px] uppercase tracking-widest transition-all ${
+                  genero === 'feminino' 
+                  ? 'bg-[#4A7FA5] text-white shadow-lg shadow-[#4A7FA5]/30 scale-[1.02]' 
+                  : 'bg-[#FAF8F4] text-slate-400 grayscale opacity-60'
+                }`}
+              >
+                Feminino
+              </button>
             </div>
           </div>
+        </section>
 
-          <div>
-            <label className="block text-[10px] font-black text-[#6B7280] uppercase text-center mb-2">
-              Sexo Biológico
-            </label>
-            <div className="flex gap-3">
-              {['Feminino', 'Masculino'].map((s) => (
-                <button
-                  key={s}
-                  onClick={() => setSexo(s)}
-                  className={`flex-1 py-4 rounded-2xl font-black transition-all ${
-                    sexo === s
-                      ? 'bg-[#4A7FA5] text-white shadow-md'
-                      : 'bg-white text-[#6B7280]'
-                  }`}
+        {/* SEÇÃO: DADOS MÉDICOS CRÍTICOS */}
+        <section className="space-y-4">
+          <div className="flex items-center gap-2 mb-2 ml-2">
+            <Heart size={14} className="text-[#E8A87C]" />
+            <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Saúde Crítica</span>
+          </div>
+
+          <div className="bg-white p-6 rounded-[2.5rem] shadow-xl shadow-slate-200/50 space-y-6 border border-white">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <label className="text-[9px] font-black text-[#E8A87C] uppercase ml-2 tracking-widest flex items-center gap-1">
+                  <Droplets size={10} /> Tipo Sanguíneo
+                </label>
+                <select 
+                  className="w-full p-4 rounded-2xl bg-[#FAF8F4] border-2 border-transparent focus:border-[#E8A87C] outline-none font-bold text-[#2D3142] appearance-none"
+                  value={sangue}
+                  onChange={(e) => setSangue(e.target.value)}
                 >
-                  {s.toUpperCase()}
-                </button>
-              ))}
+                  <option value="">Selecione</option>
+                  <option value="A">A</option>
+                  <option value="B">B</option>
+                  <option value="AB">AB</option>
+                  <option value="O">O</option>
+                </select>
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-[9px] font-black text-[#E8A87C] uppercase ml-2 tracking-widest">Fator RH</label>
+                <div className="flex gap-2">
+                  {['+', '-'].map((item) => (
+                    <button
+                      key={item}
+                      onClick={() => setRh(item)}
+                      className={`flex-1 p-4 rounded-xl font-black transition-all ${
+                        rh === item 
+                        ? 'bg-[#E8A87C] text-white shadow-md' 
+                        : 'bg-[#FAF8F4] text-slate-400'
+                      }`}
+                    >
+                      {item}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-[9px] font-black text-slate-400 uppercase ml-2 tracking-widest flex items-center gap-1">
+                <ShieldAlert size={10} /> Observações de Alerta
+              </label>
+              <textarea 
+                placeholder="Alergias, doenças crônicas ou restrições de mobilidade..."
+                className="w-full p-5 rounded-2xl bg-[#FAF8F4] border-2 border-transparent focus:border-[#E8A87C] focus:bg-white outline-none font-bold text-[#2D3142] transition-all placeholder:text-slate-300 shadow-inner h-32 resize-none text-sm"
+                value={obs}
+                onChange={(e) => setObs(e.target.value)}
+              />
             </div>
           </div>
+        </section>
 
-          <button
-            onClick={handleSave}
-            disabled={loading}
-            className="w-full bg-[#E8A87C] text-white py-5 rounded-[2rem] text-xl font-black shadow-xl mt-8 flex items-center justify-center gap-3"
+        {/* BOTÃO DE AÇÃO FINAL */}
+        <div className="pt-4">
+          <button 
+            onClick={() => onNext({ nome, genero, sangue, rh, obs })}
+            className="w-full py-7 bg-[#2D3142] text-white rounded-[2.5rem] font-black text-xs uppercase tracking-[0.3em] flex items-center justify-center gap-3 shadow-2xl shadow-[#2D3142]/40 active:scale-95 transition-all group"
           >
-            {loading ? (
-              <Loader2 className="animate-spin" />
-            ) : (
-              <>
-                <Save size={24} /> SALVAR E CONTINUAR
-              </>
-            )}
+            Configurar Rede de Apoio
+            <ChevronRight size={18} className="group-hover:translate-x-1 transition-transform" />
           </button>
+          
+          <p className="text-center mt-6 text-[9px] font-bold text-slate-300 uppercase tracking-widest">
+            Seus dados são criptografados e seguros
+          </p>
         </div>
       </div>
     </div>
