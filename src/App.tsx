@@ -9,24 +9,17 @@ import Finance from './pages/Finance';
 
 export default function App() {
   const [screen, setScreen] = useState('welcome');
-  
-  // Onde o nome do Einstein e o Gênero ficam guardados
-  const [idoso, setIdoso] = useState({ nome: '', genero: 'masculino' });
-  
-  // Onde os membros da família ficam guardados
+  const [idoso, setIdoso] = useState({ 
+    nome: '', 
+    apelido: '', 
+    genero: 'masculino', 
+    sangue: '', 
+    rh: '+', 
+    obs: '' 
+  });
   const [membros, setMembros] = useState([
     { id: 1, nome: 'Artur', papel: 'Responsável', nivel: 'admin' }
   ]);
-
-  const salvarIdoso = (dados: any) => {
-    setIdoso(dados);
-    setScreen('family');
-  };
-
-  const finalizarRede = (listaAtualizada: any) => {
-    setMembros(listaAtualizada);
-    setScreen('dashboard');
-  };
 
   return (
     <main>
@@ -38,7 +31,10 @@ export default function App() {
         <ElderlyRegistration 
           dadosIniciais={idoso}
           onBack={() => setScreen('welcome')} 
-          onNext={salvarIdoso} 
+          onNext={(dados: any) => {
+            setIdoso(dados);
+            setScreen('family');
+          }} 
         />
       )}
 
@@ -46,7 +42,10 @@ export default function App() {
         <FamilyMembers 
           membrosSalvos={membros}
           onBack={() => setScreen('elderly')} 
-          onNext={finalizarRede} 
+          onNext={(lista: any) => {
+            setMembros(lista);
+            setScreen('dashboard');
+          }} 
         />
       )}
 
@@ -58,10 +57,10 @@ export default function App() {
         />
       )}
 
-      {/* Telas de detalhe que agora recebem os dados corretamente */}
-      {screen === 'timeline' && <DailyTimeline idoso={idoso} onNavigate={setScreen} />}
-      {screen === 'health' && <Health idoso={idoso} onNavigate={setScreen} />}
-      {screen === 'finance' && <Finance idoso={idoso} onNavigate={setScreen} />}
+      {/* Estas linhas abaixo garantem que as telas NÃO fiquem em branco */}
+      {screen === 'timeline' && <DailyTimeline onNavigate={setScreen} idoso={idoso} />}
+      {screen === 'health' && <Health onNavigate={setScreen} idoso={idoso} />}
+      {screen === 'finance' && <Finance onNavigate={setScreen} idoso={idoso} />}
     </main>
   );
 }
