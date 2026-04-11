@@ -1,0 +1,16 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply bg-[#FAF8F4] text-[#2D3142];
+    font-family: 'Inter', sans-serif;
+  }
+}
+
+:root {
+  --background: #faf8f4;
+  --primary: #4a7fa5;
+  --accent: #e8a87c;
+}
