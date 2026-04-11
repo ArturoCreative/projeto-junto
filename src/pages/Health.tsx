@@ -1,21 +1,51 @@
-import React from 'react';
-import { ArrowLeft, Activity } from 'lucide-react';
+import React, { useState } from 'react';
+import { ArrowLeft, Activity, Heart, Thermometer, Droplets, Plus } from 'lucide-react';
 
 export default function Health({ onNavigate, idoso }: any) {
+  const nomeIdoso = idoso?.nome || "Einstein";
+
   return (
-    <div className="p-8 bg-[#FAF8F4] min-h-screen font-sans">
-      <button onClick={() => onNavigate('dashboard')} className="mb-6 flex items-center text-[#4A7FA5] font-black uppercase text-[10px] tracking-widest">
-        <ArrowLeft size={16} className="mr-2" /> VOLTAR
-      </button>
-      <div className="bg-white p-8 rounded-[2.5rem] shadow-sm">
-        <div className="w-12 h-12 bg-[#4A7FA5]/10 rounded-2xl flex items-center justify-center text-[#4A7FA5] mb-4">
-          <Activity size={24} />
+    <div className="min-h-screen bg-[#FAF8F4] font-sans pb-10">
+      <div className="p-8 pb-4">
+        <button onClick={() => onNavigate('dashboard')} className="mb-6 flex items-center text-[#4A7FA5] font-black uppercase text-[10px] tracking-[0.2em]">
+          <ArrowLeft size={16} className="mr-2" /> Painel Principal
+        </button>
+        
+        <p className="text-[#4A7FA5] text-[10px] font-black uppercase tracking-[0.2em] mb-1">Saúde & Bem-estar</p>
+        <h1 className="text-3xl font-black text-[#2D3142] tracking-tighter italic">Monitoramento</h1>
+      </div>
+
+      <div className="px-8 space-y-6 mt-4">
+        {/* CARD PRINCIPAL DE RESUMO */}
+        <div className="bg-white p-6 rounded-[2.5rem] shadow-sm border border-slate-100">
+          <div className="flex items-center gap-4 mb-6">
+            <div className="w-12 h-12 bg-[#4A7FA5] rounded-2xl flex items-center justify-center text-white shadow-lg shadow-[#4A7FA5]/20">
+              <Activity size={24} />
+            </div>
+            <div>
+              <p className="font-black text-[#2D3142]">{nomeIdoso}</p>
+              <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest text-green-500">Sinais Estáveis</p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100">
+              <Heart size={16} className="text-red-400 mb-2" />
+              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Pressão</p>
+              <p className="font-black text-[#2D3142]">12/8 <span className="text-[10px] font-medium text-slate-400">mmHg</span></p>
+            </div>
+            <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100">
+              <Droplets size={16} className="text-blue-400 mb-2" />
+              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Glicemia</p>
+              <p className="font-black text-[#2D3142]">98 <span className="text-[10px] font-medium text-slate-400">mg/dL</span></p>
+            </div>
+          </div>
         </div>
-        <h2 className="text-2xl font-black text-[#2D3142] mb-2">Saúde e Bem-estar</h2>
-        <p className="text-slate-400 text-sm font-bold uppercase tracking-wider mb-6">Controle de Sinais Vitais</p>
-        <div className="p-4 bg-slate-50 rounded-2xl border-2 border-dashed border-slate-200 text-center text-slate-400 font-bold text-xs">
-          Nenhum sinal vital registrado para {idoso?.nome || 'Einstein'} hoje.
-        </div>
+
+        {/* BOTÃO ADICIONAR NOVO REGISTRO */}
+        <button className="w-full py-6 bg-[#4A7FA5] text-white rounded-[2rem] font-black flex items-center justify-center gap-3 shadow-xl shadow-[#4A7FA5]/20 active:scale-95 transition-transform">
+          <Plus size={20} /> NOVO REGISTRO DE SAÚDE
+        </button>
       </div>
     </div>
   );
