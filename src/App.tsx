@@ -9,52 +9,59 @@ import Finance from './pages/Finance';
 
 export default function App() {
   const [screen, setScreen] = useState('welcome');
-
-  // O COFRE DE DADOS (ESTADO GLOBAL)
-  const [idoso, setIdoso] = useState({ nome: '', genero: 'feminino' });
+  
+  // Onde o nome do Einstein e o Gênero ficam guardados
+  const [idoso, setIdoso] = useState({ nome: '', genero: 'masculino' });
+  
+  // Onde os membros da família ficam guardados
   const [membros, setMembros] = useState([
-    { id: 1, nome: 'Artur', papel: 'Responsável', nivel: 'admin' },
+    { id: 1, nome: 'Artur', papel: 'Responsável', nivel: 'admin' }
   ]);
 
-  // Função para salvar idoso e avançar
   const salvarIdoso = (dados: any) => {
     setIdoso(dados);
     setScreen('family');
   };
 
+  const finalizarRede = (listaAtualizada: any) => {
+    setMembros(listaAtualizada);
+    setScreen('dashboard');
+  };
+
   return (
     <main>
-      {screen === 'welcome' && <Welcome onStart={() => setScreen('elderly')} />}
+      {screen === 'welcome' && (
+        <Welcome onStart={() => setScreen('elderly')} />
+      )}
 
       {screen === 'elderly' && (
-        <ElderlyRegistration
+        <ElderlyRegistration 
           dadosIniciais={idoso}
-          onBack={() => setScreen('welcome')}
-          onNext={salvarIdoso}
+          onBack={() => setScreen('welcome')} 
+          onNext={salvarIdoso} 
         />
       )}
 
       {screen === 'family' && (
-        <FamilyMembers
+        <FamilyMembers 
           membrosSalvos={membros}
-          onBack={() => setScreen('elderly')}
-          onNext={(listaAtualizada: any) => {
-            setMembros(listaAtualizada);
-            setScreen('dashboard');
-          }}
+          onBack={() => setScreen('elderly')} 
+          onNext={finalizarRede} 
         />
       )}
 
       {screen === 'dashboard' && (
-        <Dashboard idoso={idoso} membros={membros} onNavigate={setScreen} />
+        <Dashboard 
+          idoso={idoso}
+          membros={membros}
+          onNavigate={setScreen} 
+        />
       )}
 
-      {/* Telas de detalhe agora recebem os dados para edição */}
-      {screen === 'timeline' && (
-        <DailyTimeline idoso={idoso} onNavigate={setScreen} />
-      )}
+      {/* Telas de detalhe que agora recebem os dados corretamente */}
+      {screen === 'timeline' && <DailyTimeline idoso={idoso} onNavigate={setScreen} />}
       {screen === 'health' && <Health idoso={idoso} onNavigate={setScreen} />}
-      {screen === 'finance' && <Finance onNavigate={setScreen} />}
+      {screen === 'finance' && <Finance idoso={idoso} onNavigate={setScreen} />}
     </main>
   );
 }
