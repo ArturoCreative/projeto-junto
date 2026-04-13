@@ -1,176 +1,185 @@
-import React, { useState } from 'react';
-import {
-  ArrowLeft,
-  Plus,
-  Utensils,
-  Pill,
-  Smile,
-  Camera,
-  FileText,
-  MapPin,
-  Stethoscope,
-  ChevronRight,
+import React, { useState, useEffect } from 'react';
+import { 
+  ArrowLeft, 
+  Clock, 
+  Calendar, 
+  ChevronRight, 
+  CheckCircle2, 
+  Circle, 
+  Plus, 
+  MoreVertical, 
+  AlertCircle,
+  X,
+  Filter
 } from 'lucide-react';
 
-interface Props {
-  onBack: () => void;
-  nomeIdoso: string;
+interface TimelineItem {
+  id: number;
+  hora: string;
+  tarefa: string;
+  descricao: string;
+  categoria: 'saude' | 'lazer' | 'alimentacao';
+  status: 'concluido' | 'pendente' | 'atrasado';
 }
 
-export default function DailyTimeline({ onBack, nomeIdoso }: Props) {
-  // Simulação de registros (depois conectaremos ao Supabase)
-  const [registros] = useState([
-    {
-      id: 1,
-      tipo: 'medicamento',
-      hora: '14:00',
-      titulo: 'Losartana 50mg',
-      quem: 'Ana (irmã)',
-      cor: 'bg-[#4A7FA5]',
-    },
-    {
-      id: 2,
-      tipo: 'refeição',
-      hora: '12:30',
-      titulo: 'Almoço: Comeu bem',
-      quem: 'Cuidadora',
-      cor: 'bg-[#E8A87C]',
-    },
-    {
-      id: 3,
-      tipo: 'humor',
-      hora: '10:00',
-      titulo: 'Estava animada e sorridente',
-      quem: 'João',
-      cor: 'bg-purple-500',
-    },
+export default function DailyTimeline({ idoso, onNavigate }: any) {
+  const [filter, setFilter] = useState<'todos' | 'saude'>('todos');
+  const [modalAtividade, setModalAtividade] = useState(false);
+  const [atividades, setAtividades] = useState<TimelineItem[]>([
+    { id: 1, hora: '08:00', tarefa: 'Losartana 50mg', descricao: 'Tomar com água após o café', categoria: 'saude', status: 'concluido' },
+    { id: 2, hora: '09:30', tarefa: 'Café da Manhã', descricao: 'Frutas e aveia', categoria: 'alimentacao', status: 'concluido' },
+    { id: 3, hora: '10:30', tarefa: 'Caminhada Leve', descricao: '15 minutos no jardim', categoria: 'lazer', status: 'concluido' },
+    { id: 4, hora: '15:30', tarefa: 'Consulta Cardiologista', descricao: 'Dr. Roberto - Levar exames', categoria: 'saude', status: 'pendente' },
+    { id: 5, hora: '18:00', tarefa: 'Jantar', descricao: 'Sopa de legumes', categoria: 'alimentacao', status: 'pendente' },
+    { id: 6, hora: '21:00', tarefa: 'Medição Pressão', descricao: 'Verificar e anotar no app', categoria: 'saude', status: 'pendente' },
   ]);
 
-  const [showOptions, setShowOptions] = useState(false);
+  const nomeExibicao = idoso?.apelido || idoso?.nome || "Idoso";
+  const fotoExibicao = idoso?.foto || null;
+
+  const toggleStatus = (id: number) => {
+    setAtividades(prev => prev.map(item => {
+      if (item.id === id) {
+        return { ...item, status: item.status === 'concluido' ? 'pendente' : 'concluido' };
+      }
+      return item;
+    }));
+  };
+
+  const atividadesFiltradas = filter === 'todos' 
+    ? atividades 
+    : atividades.filter(a => a.categoria === 'saude');
 
   return (
-    <div className="min-h-screen bg-[#FAF8F4] p-6 font-sans relative pb-24">
-      {/* HEADER */}
-      <div className="flex items-center justify-between mb-8">
-        <button
-          onClick={onBack}
-          className="text-[#4A7FA5] font-bold flex items-center gap-2"
-        >
-          <ArrowLeft size={20} /> Voltar
-        </button>
-        <div className="text-right">
-          <h2 className="text-xl font-black text-[#2D3142]">
-            Dia de {nomeIdoso.split(' ')[0]}
-          </h2>
-          <p className="text-xs font-bold text-[#4A7FA5] uppercase tracking-widest">
-            Hoje, 22 de Outubro
-          </p>
+    <div className="min-h-screen bg-[#FAF8F4] pb-32 animate-in fade-in duration-700">
+      
+      {/* Modal de Nova Atividade */}
+      {modalAtividade && (
+        <div className="fixed inset-0 z-[200] bg-black/70 backdrop-blur-md flex items-center justify-center p-6">
+          <div className="bg-white w-full max-w-sm rounded-[3rem] p-10 shadow-2xl animate-in zoom-in duration-300">
+            <div className="flex justify-between items-center mb-8">
+              <h2 className="text-xl font-black text-[#2D3142] italic uppercase tracking-tighter">Nova Tarefa</h2>
+              <button onClick={() => setModalAtividade(false)} className="p-2 bg-slate-100 rounded-full"><X size={20}/></button>
+            </div>
+            <div className="space-y-4">
+              <input type="text" placeholder="O que precisa ser feito?" className="w-full p-5 bg-slate-50 rounded-2xl border-none font-bold text-sm outline-none focus:ring-2 ring-[#4A7FA5]/20" />
+              <div className="grid grid-cols-2 gap-4">
+                <input type="time" className="p-5 bg-slate-50 rounded-2xl border-none font-bold text-sm outline-none" />
+                <select className="p-5 bg-slate-50 rounded-2xl border-none font-bold text-sm outline-none">
+                  <option>Saúde</option>
+                  <option>Alimentação</option>
+                  <option>Lazer</option>
+                </select>
+              </div>
+            </div>
+            <button onClick={() => setModalAtividade(false)} className="w-full mt-8 py-6 bg-[#2D3142] text-white rounded-2xl font-black uppercase text-[10px] tracking-[0.3em] shadow-xl">Agendar Atividade</button>
+          </div>
         </div>
-      </div>
+      )}
 
-      {/* TIMELINE */}
-      <div className="relative">
-        {/* Linha vertical cinza no fundo */}
-        <div className="absolute left-4 top-0 bottom-0 w-1 bg-slate-200 rounded-full"></div>
+      {/* Header Profissional */}
+      <header className="p-8 bg-white/50 backdrop-blur-sm sticky top-0 z-50 border-b border-slate-100">
+        <div className="flex justify-between items-center mb-6">
+          <button onClick={() => onNavigate('dashboard')} className="w-12 h-12 rounded-2xl bg-white shadow-xl flex items-center justify-center text-[#4A7FA5] active:scale-90 transition-all">
+            <ArrowLeft size={20}/>
+          </button>
+          <div className="flex items-center gap-3">
+            <button onClick={() => setFilter(filter === 'todos' ? 'saude' : 'todos')} className={`w-12 h-12 rounded-2xl shadow-xl flex items-center justify-center transition-all ${filter === 'saude' ? 'bg-[#4A7FA5] text-white' : 'bg-white text-slate-400'}`}>
+              <Filter size={18} />
+            </button>
+            <div className="w-12 h-12 rounded-2xl bg-[#2D3142] shadow-xl flex items-center justify-center text-white">
+              <Calendar size={18} />
+            </div>
+          </div>
+        </div>
+        
+        <div className="flex items-center gap-5">
+          <div className="w-16 h-16 rounded-[1.5rem] bg-slate-200 overflow-hidden border-2 border-white shadow-lg">
+            {fotoExibicao ? <img src={fotoExibicao} className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center font-black text-[#4A7FA5]">JD</div>}
+          </div>
+          <div>
+            <p className="text-[10px] font-black text-[#E8A87C] uppercase tracking-[0.3em] leading-none mb-1">Cronograma Diário</p>
+            <h1 className="text-2xl font-black text-[#2D3142] tracking-tighter italic leading-none">{nomeExibicao}</h1>
+          </div>
+        </div>
+      </header>
 
-        <div className="space-y-10 relative">
-          {registros.map((reg) => (
-            <div key={reg.id} className="flex gap-6 items-start">
-              {/* Círculo com ícone na linha */}
-              <div
-                className={`w-9 h-9 ${reg.cor} rounded-full flex items-center justify-center text-white shadow-lg z-10 shrink-0 border-4 border-[#FAF8F4]`}
-              >
-                {reg.tipo === 'medicamento' && <Pill size={16} />}
-                {reg.tipo === 'refeição' && <Utensils size={16} />}
-                {reg.tipo === 'humor' && <Smile size={16} />}
+      {/* Conteúdo da Timeline */}
+      <div className="p-8 relative">
+        {/* Linha Guia Vertical */}
+        <div className="absolute left-[55px] top-10 bottom-10 w-1 bg-gradient-to-b from-[#4A7FA5]/20 via-slate-200 to-transparent rounded-full" />
+
+        <div className="space-y-8">
+          {atividadesFiltradas.map((item, index) => (
+            <div key={item.id} className={`flex gap-6 items-start animate-in slide-in-from-left duration-500`} style={{ delay: `${index * 100}ms` }}>
+              
+              {/* Indicador de Hora e Status */}
+              <div className="flex flex-col items-center relative z-10">
+                <button 
+                  onClick={() => toggleStatus(item.id)}
+                  className={`w-14 h-14 rounded-[1.5rem] shadow-xl flex items-center justify-center transition-all border-4 border-[#FAF8F4] ${
+                    item.status === 'concluido' ? 'bg-green-500 text-white' : 'bg-white text-[#4A7FA5]'
+                  }`}
+                >
+                  {item.status === 'concluido' ? <CheckCircle2 size={22} /> : <Clock size={22} />}
+                </button>
+                <span className="text-[9px] font-black text-slate-400 mt-3 uppercase tracking-tighter">{item.hora}</span>
               </div>
 
-              {/* Card do registro */}
-              <div className="bg-white p-4 rounded-2xl shadow-sm flex-1 border border-slate-50">
-                <div className="flex justify-between items-start mb-1">
-                  <p className="font-black text-[#2D3142]">{reg.titulo}</p>
-                  <span className="text-xs font-black text-[#4A7FA5]">
-                    {reg.hora}
-                  </span>
+              {/* Card da Atividade */}
+              <div className={`flex-1 p-6 rounded-[2.5rem] shadow-xl border border-white transition-all relative overflow-hidden group ${
+                item.status === 'concluido' ? 'bg-white/40 opacity-60' : 'bg-white'
+              }`}>
+                {item.categoria === 'saude' && (
+                  <div className="absolute top-0 right-10 w-8 h-1 bg-[#4A7FA5] rounded-b-full" />
+                )}
+                
+                <div className="flex justify-between items-start mb-2">
+                  <div className="space-y-1">
+                    <p className={`text-[8px] font-black uppercase tracking-widest ${
+                      item.categoria === 'saude' ? 'text-[#4A7FA5]' : 'text-slate-300'
+                    }`}>
+                      {item.categoria}
+                    </p>
+                    <h3 className={`font-black text-sm italic transition-all ${
+                      item.status === 'concluido' ? 'line-through text-slate-400' : 'text-[#2D3142]'
+                    }`}>
+                      {item.tarefa}
+                    </h3>
+                  </div>
+                  <button className="text-slate-200 group-hover:text-slate-400 transition-colors">
+                    <MoreVertical size={16} />
+                  </button>
                 </div>
-                <p className="text-xs text-[#6B7280] font-medium italic">
-                  por {reg.quem}
+                
+                <p className="text-[11px] font-bold text-slate-400 leading-tight italic">
+                  {item.descricao}
                 </p>
 
-                <div className="mt-3 flex gap-2">
-                  <button className="text-[10px] font-black text-[#4A7FA5] uppercase">
-                    Editar
-                  </button>
-                  <button className="text-[10px] font-black text-slate-300 uppercase">
-                    Remover
-                  </button>
-                </div>
+                {item.status === 'pendente' && item.hora < '12:00' && (
+                  <div className="mt-4 flex items-center gap-2 text-red-400">
+                    <AlertCircle size={12} />
+                    <span className="text-[8px] font-black uppercase tracking-tighter">Tarefa Atrasada</span>
+                  </div>
+                )}
               </div>
             </div>
           ))}
         </div>
       </div>
 
-      {/* MENSAGEM SE ESTIVER VAZIO */}
-      {registros.length === 0 && (
-        <div className="flex flex-col items-center justify-center py-20 text-center opacity-50">
-          <Utensils size={48} className="text-[#4A7FA5] mb-4" />
-          <p className="font-bold text-[#6B7280]">
-            Nenhum registro ainda hoje.
-            <br />
-            Que tal registrar o café? ☕
-          </p>
-        </div>
-      )}
+      {/* FAB - Floating Action Button Profissional */}
+      <div className="fixed bottom-10 right-8 z-[100]">
+        <button 
+          onClick={() => setModalAtividade(true)}
+          className="w-20 h-20 bg-[#2D3142] text-white rounded-[2.5rem] shadow-[0_20px_40px_rgba(0,0,0,0.3)] flex items-center justify-center active:scale-90 transition-all border-[6px] border-[#FAF8F4]"
+        >
+          <Plus size={32} />
+        </button>
+      </div>
 
-      {/* BOTÃO FLUTUANTE "+" */}
-      <button
-        onClick={() => setShowOptions(!showOptions)}
-        className="fixed bottom-28 right-6 w-16 h-16 bg-[#4A7FA5] rounded-full shadow-2xl flex items-center justify-center text-white active:scale-90 transition-all z-50"
-      >
-        <Plus
-          size={32}
-          className={`transition-transform ${showOptions ? 'rotate-45' : ''}`}
-        />
-      </button>
-
-      {/* MENU DE OPÇÕES (BOTTOM SHEET) */}
-      {showOptions && (
-        <div className="fixed inset-0 bg-[#2D3142]/40 backdrop-blur-sm z-40 flex items-end">
-          <div className="bg-white w-full rounded-t-[3rem] p-8 animate-in slide-in-from-bottom duration-300">
-            <h3 className="text-center font-black text-[#2D3142] mb-6 uppercase tracking-widest text-sm">
-              O que deseja registrar?
-            </h3>
-            <div className="grid grid-cols-3 gap-6">
-              {[
-                { i: <Utensils />, l: 'Refeição', c: 'text-orange-500' },
-                { i: <Pill />, l: 'Remédio', c: 'text-blue-500' },
-                { i: <Smile />, l: 'Humor', c: 'text-purple-500' },
-                { i: <Camera />, l: 'Foto', c: 'text-green-500' },
-                { i: <FileText />, l: 'Nota', c: 'text-slate-500' },
-                { i: <Stethoscope />, l: 'Consulta', c: 'text-red-400' },
-              ].map((opt, idx) => (
-                <button key={idx} className="flex flex-col items-center gap-2">
-                  <div
-                    className={`w-14 h-14 rounded-2xl bg-slate-50 flex items-center justify-center ${opt.c} shadow-sm`}
-                  >
-                    {opt.i}
-                  </div>
-                  <span className="text-[10px] font-black text-[#6B7280] uppercase">
-                    {opt.l}
-                  </span>
-                </button>
-              ))}
-            </div>
-            <button
-              onClick={() => setShowOptions(false)}
-              className="mt-8 w-full py-4 text-[#6B7280] font-bold underline"
-            >
-              Cancelar
-            </button>
-          </div>
-        </div>
-      )}
+      {/* Overlay de navegação inferior opcional/estético */}
+      <div className="fixed bottom-0 left-0 right-0 h-24 bg-gradient-to-t from-[#FAF8F4] to-transparent pointer-events-none" />
     </div>
   );
 }
