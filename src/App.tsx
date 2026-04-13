@@ -1,11 +1,9 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { supabase } from './supabase';
 
-// Tipagem declarada internamente para estabilidade
-export type Screen = 'welcome' | 'elderly' | 'family' | 'dashboard' | 'timeline' | 'health' | 'finance';
-
-// Importação das páginas conforme sua estrutura de pastas
+// Importação das Páginas
 import Welcome from './pages/Welcome';
+import Login from './pages/Login';
 import ElderlyRegistration from './pages/ElderlyRegistration';
 import FamilyMembers from './pages/FamilyMembers';
 import Dashboard from './pages/Dashboard';
@@ -13,123 +11,159 @@ import DailyTimeline from './pages/DailyTimeline';
 import Health from './pages/Health';
 import Finance from './pages/Finance';
 
-// Ícones da biblioteca Lucide
-import { Home, Clock, Heart, DollarSign, AlertCircle } from 'lucide-react';
+// Tipagem para Garantir Robustez
+interface UserProfile {
+  id: string;
+  family_id: string;
+  full_name: string;
+  role: string;
+  avatar_url?: string;
+}
+
+interface ElderlyProfile {
+  id: string;
+  family_id: string;
+  full_name: string;
+  nickname: string;
+  birth_date: string;
+}
 
 export default function App() {
-  const [screen, setScreen] = useState<Screen>('welcome');
-  const [userProfile, setUserProfile] = useState<any>(null);
-  const [familyData, setFamilyData] = useState<any>(null);
-  const [elderly, setElderly] = useState<any>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  // --- ESTADOS DE DADOS (CORE) ---
+  const [session, setSession] = useState<any>(null);
+  const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
+  const [selectedElderly, setSelectedElderly] = useState<ElderlyProfile | null>(null);
+  const [familyId, setFamilyId] = useState<string | null>(null);
+
+  // --- ESTADOS DE CONTROLE DE INTERFACE ---
+  const [currentScreen, setCurrentScreen] = useState<string>('welcome');
+  const [loading, setLoading] = useState<boolean>(true);
+  const [appError, setAppError] = useState<string | null>(null);
+  const [isInitializing, setIsInitializing] = useState<boolean>(true);
 
   /**
-   * Carrega o contexto global do aplicativo buscando no Supabase:
-   * Usuário -> Perfil -> Família -> Idoso Principal
+   * Função Mestre para Carregar Contexto do Usuário
+   * Busca Perfil, Família e Idoso de forma encadeada
    */
-  const loadAppContext = useCallback(async () => {
+  const loadUserContext = useCallback(async (userId: string) => {
     try {
-      setIsLoading(true);
-      setError(null);
+      setLoading(true);
+      setAppError(null);
 
-      const { data: { session }, error: authError } = await supabase.auth.getSession();
-      
-      if (authError) throw authError;
-      if (!session) {
-        setScreen('welcome');
-        return;
-      }
-
-      // Busca perfil e dados da família em uma única query (Join)
+      // 1. Buscar Perfil do Usuário
       const { data: profile, error: profileError } = await supabase
         .from('profiles')
-        .select(`
-          *,
-          families:family_id (*)
-        `)
-        .eq('user_id', session.user.id)
-        .maybeSingle();
+        .select('*')
+        .eq('id', userId)
+        .single();
 
-      if (profileError) throw profileError;
+      if (profileError) {
+        if (profileError.code === 'PGRST116') {
+          // Perfil não existe no DB, mas existe no Auth (raro, mas tratamos)
+          setCurrentScreen('login');
+          return;
+        }
+        throw profileError;
+      }
 
       if (profile) {
         setUserProfile(profile);
-        setFamilyData(profile.families);
+        setFamilyId(profile.family_id);
 
-        if (profile.family_id) {
-          // Busca o idoso marcado como principal na família
-          const { data: elderlyData, error: elderlyError } = await supabase
-            .from('elderly_profiles')
-            .select('*')
-            .eq('family_id', profile.family_id)
-            .eq('is_primary', true)
-            .maybeSingle();
+        // 2. Buscar Perfil do Idoso vinculado à Família
+        // Um perfil de família pode ter um idoso principal
+        const { data: elderly, error: elderlyError } = await supabase
+          .from('elderly_profiles')
+          .select('*')
+          .eq('family_id', profile.family_id)
+          .maybeSingle();
 
-          if (elderlyError) throw elderlyError;
+        if (elderlyError) throw elderlyError;
 
-          if (elderlyData) {
-            setElderly(elderlyData);
-            setScreen('dashboard');
-          } else {
-            setScreen('elderly');
-          }
+        if (elderly) {
+          setSelectedElderly(elderly);
+          // Se tudo estiver pronto, manda para o Dashboard
+          setCurrentScreen('dashboard');
+        } else {
+          // Se o perfil existe mas não tem idoso, vai para o cadastro de idoso
+          setCurrentScreen('elderly-reg');
         }
-      } else {
-        // Se o usuário está logado mas não tem perfil, envia para Welcome/Cadastro
-        setScreen('welcome');
       }
-
     } catch (err: any) {
-      console.error('Erro de Sincronização:', err.message);
-      setError('Falha na conexão com o servidor. Verifique sua internet.');
+      console.error("Erro Crítico no App Context:", err.message);
+      setAppError("Não conseguimos sincronizar seus dados. Verifique sua internet.");
     } finally {
-      setIsLoading(false);
+      setLoading(false);
+      setIsInitializing(false);
     }
   }, []);
 
+  /**
+   * Monitoramento de Sessão Ativa
+   */
   useEffect(() => {
-    loadAppContext();
-    
-    // Gerenciador de estado de autenticação em tempo real
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (!session) {
-        setScreen('welcome');
-        setUserProfile(null);
-        setElderly(null);
+    // Check inicial de sessão
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session);
+      if (session?.user) {
+        loadUserContext(session.user.id);
       } else {
-        loadAppContext();
+        setIsInitializing(false);
+        setLoading(false);
       }
     });
 
-    return () => subscription.unsubscribe();
-  }, [loadAppContext]);
+    // Listener para mudanças de login/logout
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setSession(session);
+      if (session?.user) {
+        loadUserContext(session.user.id);
+      } else {
+        // Limpeza de estados ao deslogar
+        setUserProfile(null);
+        setSelectedElderly(null);
+        setFamilyId(null);
+        setCurrentScreen('welcome');
+        setLoading(false);
+      }
+    });
 
-  const navigateTo = (nextScreen: Screen) => {
-    setScreen(nextScreen);
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, [loadUserContext]);
+
+  /**
+   * Handler de Navegação Segura
+   */
+  const handleNavigate = (screen: string) => {
+    // Log de auditoria simples para debug em desenvolvimento
+    console.log(`[Navegação] Indo para: ${screen}`);
+    setCurrentScreen(screen);
   };
 
-  if (isLoading) {
+  /**
+   * Renderizador de Estados de Erro e Loading
+   */
+  if (isInitializing || (loading && currentScreen === 'welcome')) {
     return (
-      <div className="min-h-screen bg-[#FAF8F4] flex flex-col items-center justify-center p-6 text-center">
-        <div className="w-20 h-20 bg-white rounded-[2.5rem] shadow-xl flex items-center justify-center mb-6 animate-pulse border-2 border-slate-50">
-          <div className="w-10 h-10 bg-[#4A7FA5] rounded-2xl opacity-20" />
-        </div>
-        <p className="text-[#4A7FA5] font-black uppercase tracking-[0.3em] text-[10px] italic">Sincronizando JUNTO...</p>
+      <div className="min-h-screen bg-[#FAF8F4] flex flex-col items-center justify-center p-8 text-center">
+        <div className="w-16 h-16 border-4 border-[#4A7FA5]/20 border-t-[#4A7FA5] rounded-full animate-spin mb-6" />
+        <h1 className="text-[#2D3142] font-black text-xl italic tracking-tighter">JUNTO</h1>
+        <p className="text-slate-400 text-xs font-bold uppercase tracking-[0.3em] mt-2">Sincronizando Rede...</p>
       </div>
     );
   }
 
-  if (error) {
+  if (appError) {
     return (
-      <div className="min-h-screen bg-[#FAF8F4] flex flex-col items-center justify-center p-10 text-center">
-        <AlertCircle size={48} className="text-red-400 mb-4" />
-        <h2 className="text-[#2D3142] font-black text-xl mb-2 italic">Erro de Conexão</h2>
-        <p className="text-slate-500 text-sm mb-8 font-medium">{error}</p>
+      <div className="min-h-screen bg-[#FAF8F4] flex flex-col items-center justify-center p-12 text-center">
+        <div className="bg-red-50 text-red-500 p-6 rounded-[2.5rem] mb-6">
+          <p className="font-black text-sm uppercase tracking-tight">{appError}</p>
+        </div>
         <button 
-          onClick={loadAppContext} 
-          className="px-10 py-5 bg-[#2D3142] text-white rounded-[1.5rem] font-black uppercase text-[10px] tracking-widest shadow-2xl active:scale-95 transition-all"
+          onClick={() => window.location.reload()}
+          className="bg-[#2D3142] text-white px-8 py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-xl"
         >
           Tentar Novamente
         </button>
@@ -137,62 +171,90 @@ export default function App() {
     );
   }
 
-  return (
-    <div className="min-h-screen bg-[#0F172A] flex justify-center items-center p-0 sm:p-6">
-      <main className="w-full max-w-[430px] h-full sm:h-[932px] bg-[#FAF8F4] shadow-2xl overflow-hidden relative sm:rounded-[4rem] border-[8px] border-[#1E293B] flex flex-col">
-        <div className="flex-1 overflow-y-auto no-scrollbar relative">
-          {screen === 'welcome' && (
-            <Welcome onNext={() => navigateTo('elderly')} />
-          )}
-          {screen === 'elderly' && (
-            <ElderlyRegistration familyId={userProfile?.family_id} onNext={loadAppContext} />
-          )}
-          {screen === 'family' && (
-            <FamilyMembers familyId={userProfile?.family_id} onNext={() => navigateTo('dashboard')} onBack={() => navigateTo('elderly')} />
-          )}
-          {screen === 'dashboard' && (
-            <Dashboard user={userProfile} elderly={elderly} family={familyData} onNavigate={navigateTo} />
-          )}
-          {screen === 'timeline' && (
-            <DailyTimeline elderly={elderly} user={userProfile} onNavigate={navigateTo} />
-          )}
-          {screen === 'health' && (
-            <Health elderly={elderly} onNavigate={navigateTo} />
-          )}
-          {screen === 'finance' && (
-            <Finance elderly={elderly} familyId={userProfile?.family_id} user={userProfile} onNavigate={navigateTo} />
-          )}
-        </div>
+  /**
+   * Roteador Principal (Switch Case)
+   */
+  const renderCurrentPage = () => {
+    switch (currentScreen) {
+      case 'welcome':
+        return <Welcome onNext={() => handleNavigate('login')} />;
+      
+      case 'login':
+        return <Login onAuthenticated={(session: any) => setSession(session)} />;
 
-        {/* Bottom Navigation Visível apenas dentro do App logado */}
-        {['dashboard', 'timeline', 'health', 'finance'].includes(screen) && (
-          <nav className="h-24 bg-white/95 backdrop-blur-md border-t border-slate-100 flex justify-around items-center px-6 z-50">
-            <NavItem active={screen === 'dashboard'} onClick={() => navigateTo('dashboard')} icon={<Home size={22} />} label="Home" />
-            <NavItem active={screen === 'timeline'} onClick={() => navigateTo('timeline')} icon={<Clock size={22} />} label="Dia" />
-            <NavItem active={screen === 'health'} onClick={() => navigateTo('health')} icon={<Heart size={22} />} label="Saúde" />
-            <NavItem active={screen === 'finance'} onClick={() => navigateTo('finance')} icon={<DollarSign size={22} />} label="Finanças" />
-          </nav>
-        )}
+      case 'elderly-reg':
+        return (
+          <ElderlyRegistration 
+            familyId={familyId || ''} 
+            onNext={(elderly) => {
+              setSelectedElderly(elderly);
+              handleNavigate('family-members');
+            }} 
+          />
+        );
+
+      case 'family-members':
+        return (
+          <FamilyMembers 
+            familyId={familyId || ''} 
+            onNext={() => handleNavigate('dashboard')} 
+          />
+        );
+
+      case 'dashboard':
+        return (
+          <Dashboard 
+            elderly={selectedElderly} 
+            user={userProfile}
+            onNavigate={handleNavigate} 
+          />
+        );
+
+      case 'daily':
+        return (
+          <DailyTimeline 
+            elderly={selectedElderly} 
+            user={userProfile} 
+            onNavigate={handleNavigate} 
+          />
+        );
+
+      case 'health':
+        return (
+          <Health 
+            elderly={selectedElderly} 
+            onNavigate={handleNavigate} 
+          />
+        );
+
+      case 'finance':
+        return (
+          <Finance 
+            elderly={selectedElderly} 
+            familyId={familyId || ''} 
+            user={userProfile} 
+            onNavigate={handleNavigate} 
+          />
+        );
+
+      default:
+        return <Welcome onNext={() => handleNavigate('login')} />;
+    }
+  };
+
+  return (
+    <div className="max-w-md mx-auto min-h-screen bg-white shadow-2xl overflow-hidden relative border-x border-slate-50">
+      {/* Container Principal de Renderização */}
+      <main className="h-full w-full">
+        {renderCurrentPage()}
       </main>
-    </div>
-  );
-}
 
-// Sub-componente de item da Navbar
-function NavItem({ active, onClick, icon, label }: any) {
-  return (
-    <button 
-      onClick={onClick} 
-      className={`flex flex-col items-center gap-1.5 transition-all duration-300 ${
-        active ? 'text-[#4A7FA5] scale-110' : 'text-slate-300 hover:text-slate-400'
-      }`}
-    >
-      <div className={`p-1.5 rounded-xl ${active ? 'bg-[#4A7FA5]/10' : ''}`}>
-        {icon}
-      </div>
-      <span className={`text-[9px] font-black uppercase tracking-tighter ${active ? 'opacity-100' : 'opacity-40'}`}>
-        {label}
-      </span>
-    </button>
+      {/* Camada Visual de Feedback (Opcional - Toast ou Offline Alert) */}
+      {!navigator.onLine && (
+        <div className="absolute top-0 left-0 right-0 bg-amber-500 text-white text-[8px] font-black uppercase tracking-[0.2em] py-2 text-center z-[999]">
+          Você está offline. Algumas funções podem não salvar.
+        </div>
+      )}
+    </div>
   );
 }
