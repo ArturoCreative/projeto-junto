@@ -1,185 +1,278 @@
 import React, { useState, useEffect } from 'react';
+import { supabase } from '../supabase';
 import { 
-  ArrowLeft, 
-  Clock, 
-  Calendar, 
-  ChevronRight, 
-  CheckCircle2, 
-  Circle, 
   Plus, 
+  Utensils, 
+  Smile, 
+  Camera, 
+  FileText, 
   MoreVertical, 
-  AlertCircle,
+  ChevronLeft,
   X,
-  Filter
+  Send,
+  Loader2
 } from 'lucide-react';
 
-interface TimelineItem {
-  id: number;
-  hora: string;
-  tarefa: string;
-  descricao: string;
-  categoria: 'saude' | 'lazer' | 'alimentacao';
-  status: 'concluido' | 'pendente' | 'atrasado';
+interface TimelineProps {
+  elderly: any;
+  user: any;
+  onNavigate: (screen: any) => void;
 }
 
-export default function DailyTimeline({ idoso, onNavigate }: any) {
-  const [filter, setFilter] = useState<'todos' | 'saude'>('todos');
-  const [modalAtividade, setModalAtividade] = useState(false);
-  const [atividades, setAtividades] = useState<TimelineItem[]>([
-    { id: 1, hora: '08:00', tarefa: 'Losartana 50mg', descricao: 'Tomar com água após o café', categoria: 'saude', status: 'concluido' },
-    { id: 2, hora: '09:30', tarefa: 'Café da Manhã', descricao: 'Frutas e aveia', categoria: 'alimentacao', status: 'concluido' },
-    { id: 3, hora: '10:30', tarefa: 'Caminhada Leve', descricao: '15 minutos no jardim', categoria: 'lazer', status: 'concluido' },
-    { id: 4, hora: '15:30', tarefa: 'Consulta Cardiologista', descricao: 'Dr. Roberto - Levar exames', categoria: 'saude', status: 'pendente' },
-    { id: 5, hora: '18:00', tarefa: 'Jantar', descricao: 'Sopa de legumes', categoria: 'alimentacao', status: 'pendente' },
-    { id: 6, hora: '21:00', tarefa: 'Medição Pressão', descricao: 'Verificar e anotar no app', categoria: 'saude', status: 'pendente' },
-  ]);
+export default function DailyTimeline({ elderly, user, onNavigate }: TimelineProps) {
+  const [records, setRecords] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [filter, setFilter] = useState('all');
+  const [showAddModal, setShowAddModal] = useState(false);
+  
+  // Estados para novo registro
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [recordType, setRecordType] = useState<'meal' | 'mood' | 'photo' | 'note'>('note');
+  const [content, setContent] = useState('');
+  const [tempPhoto, setTempPhoto] = useState<File | null>(null);
 
-  const nomeExibicao = idoso?.apelido || idoso?.nome || "Idoso";
-  const fotoExibicao = idoso?.foto || null;
+  useEffect(() => {
+    fetchRecords();
 
-  const toggleStatus = (id: number) => {
-    setAtividades(prev => prev.map(item => {
-      if (item.id === id) {
-        return { ...item, status: item.status === 'concluido' ? 'pendente' : 'concluido' };
+    // Inscrição Realtime para atualizações instantâneas na família
+    const channel = supabase
+      .channel('schema-db-changes')
+      .on('postgres_changes', 
+        { event: 'INSERT', schema: 'public', table: 'daily_records', filter: `family_id=eq.${user.family_id}` },
+        () => fetchRecords()
+      )
+      .subscribe();
+
+    return () => { supabase.removeChannel(channel); };
+  }, [filter]);
+
+  async function fetchRecords() {
+    try {
+      setLoading(true);
+      let query = supabase
+        .from('daily_records')
+        .select(`
+          *,
+          profiles:recorded_by (full_name, avatar_url)
+        `)
+        .eq('elderly_id', elderly.id)
+        .order('created_at', { ascending: false });
+
+      if (filter !== 'all') {
+        query = query.eq('record_type', filter);
       }
-      return item;
-    }));
-  };
 
-  const atividadesFiltradas = filter === 'todos' 
-    ? atividades 
-    : atividades.filter(a => a.categoria === 'saude');
+      const { data, error } = await query;
+      if (error) throw error;
+      setRecords(data || []);
+    } catch (err) {
+      console.error("Erro ao carregar timeline:", err);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function handleSubmitRecord() {
+    if (!content && !tempPhoto) return;
+    setIsSubmitting(true);
+
+    try {
+      let photoUrl = null;
+
+      // 1. Upload de foto se houver
+      if (tempPhoto) {
+        const fileExt = tempPhoto.name.split('.').pop();
+        const fileName = `${Math.random()}.${fileExt}`;
+        const filePath = `daily/${user.family_id}/${fileName}`;
+
+        const { error: uploadError } = await supabase.storage
+          .from('daily-photos')
+          .upload(filePath, tempPhoto);
+
+        if (uploadError) throw uploadError;
+
+        const { data } = supabase.storage.from('daily-photos').getPublicUrl(filePath);
+        photoUrl = data.publicUrl;
+      }
+
+      // 2. Inserir Registro no Banco (Seguindo seu Schema SQL)
+      const { error: insertError } = await supabase.from('daily_records').insert({
+        elderly_id: elderly.id,
+        family_id: user.family_id,
+        recorded_by: user.id,
+        record_type: recordType,
+        photo_url: photoUrl,
+        content: { text: content },
+        record_date: new Date().toISOString().split('T')[0]
+      });
+
+      if (insertError) throw insertError;
+
+      setShowAddModal(false);
+      setContent('');
+      setTempPhoto(null);
+      fetchRecords();
+
+    } catch (err) {
+      alert("Falha ao registrar atividade.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
 
   return (
-    <div className="min-h-screen bg-[#FAF8F4] pb-32 animate-in fade-in duration-700">
-      
-      {/* Modal de Nova Atividade */}
-      {modalAtividade && (
-        <div className="fixed inset-0 z-[200] bg-black/70 backdrop-blur-md flex items-center justify-center p-6">
-          <div className="bg-white w-full max-w-sm rounded-[3rem] p-10 shadow-2xl animate-in zoom-in duration-300">
-            <div className="flex justify-between items-center mb-8">
-              <h2 className="text-xl font-black text-[#2D3142] italic uppercase tracking-tighter">Nova Tarefa</h2>
-              <button onClick={() => setModalAtividade(false)} className="p-2 bg-slate-100 rounded-full"><X size={20}/></button>
-            </div>
-            <div className="space-y-4">
-              <input type="text" placeholder="O que precisa ser feito?" className="w-full p-5 bg-slate-50 rounded-2xl border-none font-bold text-sm outline-none focus:ring-2 ring-[#4A7FA5]/20" />
-              <div className="grid grid-cols-2 gap-4">
-                <input type="time" className="p-5 bg-slate-50 rounded-2xl border-none font-bold text-sm outline-none" />
-                <select className="p-5 bg-slate-50 rounded-2xl border-none font-bold text-sm outline-none">
-                  <option>Saúde</option>
-                  <option>Alimentação</option>
-                  <option>Lazer</option>
-                </select>
-              </div>
-            </div>
-            <button onClick={() => setModalAtividade(false)} className="w-full mt-8 py-6 bg-[#2D3142] text-white rounded-2xl font-black uppercase text-[10px] tracking-[0.3em] shadow-xl">Agendar Atividade</button>
-          </div>
-        </div>
-      )}
-
-      {/* Header Profissional */}
-      <header className="p-8 bg-white/50 backdrop-blur-sm sticky top-0 z-50 border-b border-slate-100">
-        <div className="flex justify-between items-center mb-6">
-          <button onClick={() => onNavigate('dashboard')} className="w-12 h-12 rounded-2xl bg-white shadow-xl flex items-center justify-center text-[#4A7FA5] active:scale-90 transition-all">
-            <ArrowLeft size={20}/>
+    <div className="min-h-full bg-[#FAF8F4] pb-24">
+      {/* Header com Filtros */}
+      <header className="bg-white px-6 pt-12 pb-6 sticky top-0 z-30 shadow-sm">
+        <div className="flex items-center justify-between mb-6">
+          <button onClick={() => onNavigate('dashboard')} className="text-slate-400">
+            <ChevronLeft size={24} />
           </button>
-          <div className="flex items-center gap-3">
-            <button onClick={() => setFilter(filter === 'todos' ? 'saude' : 'todos')} className={`w-12 h-12 rounded-2xl shadow-xl flex items-center justify-center transition-all ${filter === 'saude' ? 'bg-[#4A7FA5] text-white' : 'bg-white text-slate-400'}`}>
-              <Filter size={18} />
-            </button>
-            <div className="w-12 h-12 rounded-2xl bg-[#2D3142] shadow-xl flex items-center justify-center text-white">
-              <Calendar size={18} />
-            </div>
-          </div>
+          <h2 className="text-[#2D3142] font-black text-lg tracking-tight">Linha do Tempo</h2>
+          <div className="w-6" />
         </div>
-        
-        <div className="flex items-center gap-5">
-          <div className="w-16 h-16 rounded-[1.5rem] bg-slate-200 overflow-hidden border-2 border-white shadow-lg">
-            {fotoExibicao ? <img src={fotoExibicao} className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center font-black text-[#4A7FA5]">JD</div>}
-          </div>
-          <div>
-            <p className="text-[10px] font-black text-[#E8A87C] uppercase tracking-[0.3em] leading-none mb-1">Cronograma Diário</p>
-            <h1 className="text-2xl font-black text-[#2D3142] tracking-tighter italic leading-none">{nomeExibicao}</h1>
-          </div>
+
+        <div className="flex gap-3 overflow-x-auto no-scrollbar pb-2">
+          {['all', 'meal', 'mood', 'photo', 'note'].map((t) => (
+            <button
+              key={t}
+              onClick={() => setFilter(t)}
+              className={`px-5 py-2.5 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap ${
+                filter === t ? 'bg-[#4A7FA5] text-white shadow-lg' : 'bg-slate-50 text-slate-400'
+              }`}
+            >
+              {t === 'all' ? 'Tudo' : t === 'meal' ? 'Refeição' : t === 'mood' ? 'Humor' : t === 'photo' ? 'Fotos' : 'Notas'}
+            </button>
+          ))}
         </div>
       </header>
 
-      {/* Conteúdo da Timeline */}
-      <div className="p-8 relative">
-        {/* Linha Guia Vertical */}
-        <div className="absolute left-[55px] top-10 bottom-10 w-1 bg-gradient-to-b from-[#4A7FA5]/20 via-slate-200 to-transparent rounded-full" />
-
-        <div className="space-y-8">
-          {atividadesFiltradas.map((item, index) => (
-            <div key={item.id} className={`flex gap-6 items-start animate-in slide-in-from-left duration-500`} style={{ delay: `${index * 100}ms` }}>
-              
-              {/* Indicador de Hora e Status */}
-              <div className="flex flex-col items-center relative z-10">
-                <button 
-                  onClick={() => toggleStatus(item.id)}
-                  className={`w-14 h-14 rounded-[1.5rem] shadow-xl flex items-center justify-center transition-all border-4 border-[#FAF8F4] ${
-                    item.status === 'concluido' ? 'bg-green-500 text-white' : 'bg-white text-[#4A7FA5]'
-                  }`}
-                >
-                  {item.status === 'concluido' ? <CheckCircle2 size={22} /> : <Clock size={22} />}
-                </button>
-                <span className="text-[9px] font-black text-slate-400 mt-3 uppercase tracking-tighter">{item.hora}</span>
-              </div>
-
-              {/* Card da Atividade */}
-              <div className={`flex-1 p-6 rounded-[2.5rem] shadow-xl border border-white transition-all relative overflow-hidden group ${
-                item.status === 'concluido' ? 'bg-white/40 opacity-60' : 'bg-white'
-              }`}>
-                {item.categoria === 'saude' && (
-                  <div className="absolute top-0 right-10 w-8 h-1 bg-[#4A7FA5] rounded-b-full" />
-                )}
-                
-                <div className="flex justify-between items-start mb-2">
-                  <div className="space-y-1">
-                    <p className={`text-[8px] font-black uppercase tracking-widest ${
-                      item.categoria === 'saude' ? 'text-[#4A7FA5]' : 'text-slate-300'
-                    }`}>
-                      {item.categoria}
-                    </p>
-                    <h3 className={`font-black text-sm italic transition-all ${
-                      item.status === 'concluido' ? 'line-through text-slate-400' : 'text-[#2D3142]'
-                    }`}>
-                      {item.tarefa}
-                    </h3>
-                  </div>
-                  <button className="text-slate-200 group-hover:text-slate-400 transition-colors">
-                    <MoreVertical size={16} />
-                  </button>
+      {/* Lista de Registros */}
+      <div className="p-6 relative">
+        <div className="absolute left-[39px] top-0 bottom-0 w-[2px] bg-slate-100 z-0" />
+        
+        {loading ? (
+          <div className="flex flex-col items-center py-20 opacity-30">
+            <Loader2 className="animate-spin text-[#4A7FA5]" size={32} />
+          </div>
+        ) : records.length === 0 ? (
+          <div className="text-center py-20">
+            <p className="text-slate-400 text-sm font-medium">Nenhum registro hoje.</p>
+          </div>
+        ) : (
+          <div className="space-y-10 relative z-10">
+            {records.map((record) => (
+              <div key={record.id} className="flex gap-4">
+                <div className="w-8 h-8 rounded-full bg-white border-4 border-[#FAF8F4] shadow-sm flex items-center justify-center text-xs z-10 overflow-hidden">
+                   {record.record_type === 'meal' && <Utensils size={14} className="text-orange-400" />}
+                   {record.record_type === 'mood' && <Smile size={14} className="text-green-400" />}
+                   {record.record_type === 'photo' && <Camera size={14} className="text-[#4A7FA5]" />}
+                   {record.record_type === 'note' && <FileText size={14} className="text-slate-400" />}
                 </div>
                 
-                <p className="text-[11px] font-bold text-slate-400 leading-tight italic">
-                  {item.descricao}
-                </p>
-
-                {item.status === 'pendente' && item.hora < '12:00' && (
-                  <div className="mt-4 flex items-center gap-2 text-red-400">
-                    <AlertCircle size={12} />
-                    <span className="text-[8px] font-black uppercase tracking-tighter">Tarefa Atrasada</span>
+                <div className="flex-1 bg-white rounded-[2rem] p-5 shadow-sm border border-slate-50">
+                  <div className="flex justify-between items-start mb-3">
+                    <div className="flex items-center gap-2">
+                      <div className="w-6 h-6 bg-slate-100 rounded-full overflow-hidden">
+                        {record.profiles?.avatar_url && <img src={record.profiles.avatar_url} alt="User" />}
+                      </div>
+                      <span className="text-[#2D3142] text-[11px] font-black uppercase tracking-tighter">
+                        {record.profiles?.full_name?.split(' ')[0]}
+                      </span>
+                    </div>
+                    <span className="text-slate-300 text-[10px] font-bold">
+                      {new Date(record.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                    </span>
                   </div>
-                )}
+
+                  <p className="text-[#2D3142] text-[13px] font-medium leading-relaxed mb-3">
+                    {record.content?.text}
+                  </p>
+
+                  {record.photo_url && (
+                    <div className="rounded-2xl overflow-hidden mb-2">
+                      <img src={record.photo_url} alt="Registro" className="w-full h-auto object-cover max-h-60" />
+                    </div>
+                  )}
+                </div>
               </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Botão de Adicionar */}
+      <button 
+        onClick={() => setShowAddModal(true)}
+        className="fixed bottom-28 left-1/2 -translate-x-1/2 w-14 h-14 bg-[#2D3142] text-white rounded-2xl shadow-xl flex items-center justify-center z-40 active:scale-95 transition-all"
+      >
+        <Plus size={24} />
+      </button>
+
+      {/* Modal de Registro Robusto */}
+      {showAddModal && (
+        <div className="fixed inset-0 bg-[#2D3142]/80 backdrop-blur-sm z-[100] flex items-end">
+          <div className="bg-[#FAF8F4] w-full rounded-t-[3.5rem] p-8 pb-12 animate-slide-up">
+            <div className="flex justify-between items-center mb-8">
+              <h3 className="text-[#2D3142] font-black text-xl tracking-tighter italic">Novo Registro</h3>
+              <button onClick={() => setShowAddModal(false)} className="w-10 h-10 bg-white rounded-full flex items-center justify-center text-slate-300">
+                <X size={20} />
+              </button>
             </div>
-          ))}
+
+            {/* Seleção de Tipo */}
+            <div className="flex justify-between mb-8">
+              {[
+                { id: 'meal', icon: <Utensils size={20} />, label: 'Refeição' },
+                { id: 'mood', icon: <Smile size={20} />, label: 'Humor' },
+                { id: 'photo', icon: <Camera size={20} />, label: 'Foto' },
+                { id: 'note', icon: <FileText size={20} />, label: 'Nota' },
+              ].map((type) => (
+                <button
+                  key={type.id}
+                  onClick={() => setRecordType(type.id as any)}
+                  className={`flex flex-col items-center gap-2 group`}
+                >
+                  <div className={`w-14 h-14 rounded-2xl flex items-center justify-center transition-all ${
+                    recordType === type.id ? 'bg-[#4A7FA5] text-white shadow-lg' : 'bg-white text-slate-300'
+                  }`}>
+                    {type.icon}
+                  </div>
+                  <span className={`text-[9px] font-black uppercase tracking-widest ${
+                    recordType === type.id ? 'text-[#4A7FA5]' : 'text-slate-300'
+                  }`}>{type.label}</span>
+                </button>
+              ))}
+            </div>
+
+            <textarea
+              className="w-full bg-white rounded-[2rem] p-6 text-sm font-medium border-none focus:ring-2 focus:ring-[#4A7FA5]/20 min-h-[120px] mb-6 shadow-sm"
+              placeholder={`Descreva a ${recordType === 'meal' ? 'refeição' : 'atividade'}...`}
+              value={content}
+              onChange={(e) => setContent(e.target.value)}
+            />
+
+            <div className="flex items-center gap-4">
+              <label className="flex-1 h-16 bg-white rounded-2xl border-2 border-dashed border-slate-100 flex items-center justify-center gap-3 text-slate-400 cursor-pointer overflow-hidden">
+                {tempPhoto ? (
+                  <span className="text-[10px] font-black text-[#4A7FA5]">{tempPhoto.name}</span>
+                ) : (
+                  <><Camera size={20} /> <span className="text-[10px] font-black uppercase tracking-widest">Anexar Foto</span></>
+                )}
+                <input type="file" className="hidden" accept="image/*" onChange={(e) => setTempPhoto(e.target.files?.[0] || null)} />
+              </label>
+
+              <button
+                onClick={handleSubmitRecord}
+                disabled={isSubmitting}
+                className="w-16 h-16 bg-[#4A7FA5] text-white rounded-2xl flex items-center justify-center shadow-lg shadow-[#4A7FA5]/20 disabled:opacity-50"
+              >
+                {isSubmitting ? <Loader2 className="animate-spin" size={24} /> : <Send size={24} />}
+              </button>
+            </div>
+          </div>
         </div>
-      </div>
-
-      {/* FAB - Floating Action Button Profissional */}
-      <div className="fixed bottom-10 right-8 z-[100]">
-        <button 
-          onClick={() => setModalAtividade(true)}
-          className="w-20 h-20 bg-[#2D3142] text-white rounded-[2.5rem] shadow-[0_20px_40px_rgba(0,0,0,0.3)] flex items-center justify-center active:scale-90 transition-all border-[6px] border-[#FAF8F4]"
-        >
-          <Plus size={32} />
-        </button>
-      </div>
-
-      {/* Overlay de navegação inferior opcional/estético */}
-      <div className="fixed bottom-0 left-0 right-0 h-24 bg-gradient-to-t from-[#FAF8F4] to-transparent pointer-events-none" />
+      )}
     </div>
   );
 }
