@@ -1,224 +1,272 @@
 import React, { useState } from 'react';
+import { supabase } from '../supabase';
 import { 
-  ArrowLeft, 
-  User, 
   Camera, 
-  Star, 
-  Droplets, 
+  User, 
+  Calendar, 
+  MapPin, 
   Heart, 
-  ShieldAlert, 
-  ChevronRight,
-  Sparkles,
-  Calendar,
-  Info
+  ChevronRight, 
+  Loader2,
+  Stethoscope
 } from 'lucide-react';
 
-interface ElderlyRegistrationProps {
-  onBack: () => void;
+interface Props {
+  familyId: string;
   onNext: (data: any) => void;
-  dadosIniciais: any;
 }
 
-export default function ElderlyRegistration({ onBack, onNext, dadosIniciais }: ElderlyRegistrationProps) {
-  const [nome, setNome] = useState(dadosIniciais?.nome || '');
-  const [apelido, setApelido] = useState(dadosIniciais?.apelido || '');
-  const [genero, setGenero] = useState(dadosIniciais?.genero || 'masculino');
-  const [sangue, setSangue] = useState(dadosIniciais?.sangue || '');
-  const [rh, setRh] = useState(dadosIniciais?.rh || '+');
-  const [obs, setObs] = useState(dadosIniciais?.obs || '');
+export default function ElderlyRegistration({ familyId, onNext }: Props) {
+  const [loading, setLoading] = useState(false);
+  const [step, setStep] = useState(1);
+  const [photoFile, setPhotoFile] = useState<File | null>(null);
+  const [photoPreview, setPhotoPreview] = useState<string | null>(null);
+
+  // Estado do Formulário (Nomes exatos das colunas do seu SQL)
+  const [formData, setFormData] = useState({
+    full_name: '',
+    nickname: '',
+    birth_date: '',
+    gender: 'female',
+    city: '',
+    blood_type: 'O+',
+    mobility: 'autonomous',
+    diet_type: 'normal',
+    health_plan_name: '',
+    chronic_conditions: [] as string[]
+  });
+
+  const handlePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setPhotoFile(file);
+      setPhotoPreview(URL.createObjectURL(file));
+    }
+  };
+
+  const handleRegister = async () => {
+    if (!formData.full_name || !formData.birth_date) {
+      alert("Por favor, preencha o nome e a data de nascimento.");
+      return;
+    }
+
+    setLoading(true);
+    try {
+      let photo_url = null;
+
+      // 1. Upload da Foto se existir
+      if (photoFile) {
+        const fileExt = photoFile.name.split('.').pop();
+        const fileName = `${Date.now()}.${fileExt}`;
+        const filePath = `elderly/${fileName}`;
+
+        const { error: uploadError } = await supabase.storage
+          .from('avatars')
+          .upload(filePath, photoFile);
+
+        if (uploadError) throw uploadError;
+
+        const { data } = supabase.storage.from('avatars').getPublicUrl(filePath);
+        photo_url = data.publicUrl;
+      }
+
+      // 2. Inserir no Supabase (Tabela elderly_profiles)
+      const { data: newElderly, error } = await supabase
+        .from('elderly_profiles')
+        .insert({
+          family_id: familyId,
+          full_name: formData.full_name,
+          nickname: formData.nickname,
+          birth_date: formData.birth_date,
+          gender: formData.gender,
+          photo_url: photo_url,
+          city: formData.city,
+          blood_type: formData.blood_type,
+          mobility: formData.mobility,
+          diet_type: formData.diet_type,
+          health_plan_name: formData.health_plan_name,
+          chronic_conditions: formData.chronic_conditions,
+          is_primary: true
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      // Avançar para o App
+      onNext(newElderly);
+
+    } catch (err: any) {
+      console.error(err);
+      alert("Erro ao cadastrar: " + err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
-    <div className="min-h-screen bg-[#FAF8F4] font-sans pb-16 overflow-x-hidden animate-in fade-in duration-700">
-      {/* BACKGROUND DECORATION */}
-      <div className="fixed -top-24 -right-24 w-64 h-64 bg-[#4A7FA5]/5 rounded-full blur-3xl" />
-      <div className="fixed top-1/2 -left-32 w-80 h-80 bg-[#E8A87C]/5 rounded-full blur-3xl" />
-
-      <header className="relative p-8 pb-4 z-10">
-        <button 
-          onClick={onBack}
-          className="mb-8 flex items-center text-[#4A7FA5] font-black uppercase text-[10px] tracking-[0.3em] group active:scale-95 transition-all"
-        >
-          <div className="w-10 h-10 rounded-full bg-white shadow-md shadow-slate-200/50 flex items-center justify-center mr-4 group-hover:bg-[#4A7FA5] group-hover:text-white transition-all">
-            <ArrowLeft size={16} />
-          </div>
-          Voltar
-        </button>
-
-        <div className="space-y-2">
-          <div className="flex items-center gap-2">
-            <span className="bg-[#4A7FA5]/10 text-[#4A7FA5] px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-[0.2em]">
-              Passo 01 de 03
-            </span>
-          </div>
-          <h1 className="text-4xl font-black text-[#2D3142] tracking-tighter italic leading-[0.9]">
-            Perfil do <span className="text-[#E8A87C]">Idoso</span>
-          </h1>
-          <p className="text-slate-400 text-sm font-bold leading-relaxed max-w-[260px] pt-3 flex items-center gap-2">
-            <Info size={14} className="text-[#4A7FA5] shrink-0" />
-            Personalize as informações para um cuidado exclusivo.
-          </p>
-        </div>
+    <div className="min-h-full bg-[#FAF8F4] p-8 flex flex-col">
+      <header className="mb-10 text-center">
+        <div className="w-20 h-2px bg-[#E8A87C] mx-auto mb-6 rounded-full" />
+        <h1 className="text-3xl font-black text-[#2D3142] tracking-tighter italic">
+          Quem vamos <br /> cuidar <span className="text-[#4A7FA5]">juntos?</span>
+        </h1>
       </header>
 
-      <div className="relative px-8 mt-8 space-y-10 z-10">
-        {/* SEÇÃO 01: FOTO E IDENTIDADE VISUAL */}
-        <section className="flex flex-col items-center">
-          <div className="relative group">
-            <div className="w-40 h-40 bg-white rounded-[3.5rem] shadow-2xl shadow-slate-200 flex items-center justify-center border-8 border-white overflow-hidden transition-transform group-hover:scale-[1.02]">
-              <div className="absolute inset-0 bg-gradient-to-tr from-slate-50 to-white opacity-50" />
-              <User size={80} className="text-slate-200 relative z-10" />
-              
-              <div className="absolute inset-0 bg-black/0 group-hover:bg-black/5 transition-colors" />
-            </div>
-            <button className="absolute -bottom-2 -right-2 bg-[#4A7FA5] p-4 rounded-3xl text-white shadow-xl shadow-[#4A7FA5]/30 hover:bg-[#3d6a8a] active:scale-90 transition-all border-4 border-[#FAF8F4]">
-              <Camera size={22} />
-            </button>
-          </div>
-
-          <div className="mt-10 w-full space-y-3">
-            <label className="text-[10px] font-black text-[#4A7FA5] uppercase ml-4 tracking-[0.2em] flex items-center gap-2">
-              <Star size={12} className="fill-[#4A7FA5]" /> 
-              Como deseja ser chamado?
+      {step === 1 ? (
+        <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4">
+          {/* Upload de Foto */}
+          <div className="flex justify-center mb-8">
+            <label className="relative cursor-pointer group">
+              <div className="w-32 h-32 bg-white rounded-[2.5rem] shadow-xl border-4 border-white overflow-hidden flex items-center justify-center transition-transform group-active:scale-95">
+                {photoPreview ? (
+                  <img src={photoPreview} className="w-full h-full object-cover" alt="Preview" />
+                ) : (
+                  <Camera size={32} className="text-slate-200" />
+                )}
+              </div>
+              <div className="absolute -bottom-2 -right-2 bg-[#4A7FA5] text-white p-3 rounded-2xl shadow-lg">
+                <Plus size={16} />
+              </div>
+              <input type="file" className="hidden" accept="image/*" onChange={handlePhotoChange} />
             </label>
-            <input 
-              type="text"
-              placeholder="Ex: Vovô Albert" 
-              className="w-full p-6 rounded-[2rem] bg-white shadow-xl shadow-slate-200/30 border-2 border-transparent focus:border-[#4A7FA5] outline-none font-bold text-[#2D3142] text-lg transition-all placeholder:text-slate-200"
-              value={apelido}
-              onChange={(e) => setApelido(e.target.value)}
-            />
-          </div>
-        </section>
-
-        {/* SEÇÃO 02: DADOS CADASTRAIS */}
-        <section className="space-y-5">
-          <div className="flex items-center gap-3 ml-4">
-            <Sparkles size={14} className="text-[#E8A87C]" />
-            <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest text-slate-400">Dados Gerais</span>
           </div>
 
-          <div className="bg-white p-8 rounded-[3rem] shadow-2xl shadow-slate-200/50 space-y-6 border border-white/50">
-            <div className="space-y-2">
-              <label className="text-[9px] font-black text-slate-400 uppercase ml-2 tracking-widest">Nome Completo</label>
+          <div className="space-y-4">
+            <InputBlock label="Nome Completo" icon={<User size={18}/>}>
               <input 
-                type="text"
-                placeholder="Insira o nome completo" 
-                className="w-full p-5 rounded-2xl bg-[#FAF8F4] border-2 border-transparent focus:border-[#4A7FA5] focus:bg-white outline-none font-bold text-[#2D3142] transition-all"
-                value={nome}
-                onChange={(e) => setNome(e.target.value)}
+                type="text" 
+                placeholder="Ex: Maria de Oliveira"
+                className="w-full bg-transparent border-none p-0 text-sm font-bold focus:ring-0"
+                value={formData.full_name}
+                onChange={e => setFormData({...formData, full_name: e.target.value})}
               />
-            </div>
+            </InputBlock>
+
+            <InputBlock label="Data de Nascimento" icon={<Calendar size={18}/>}>
+              <input 
+                type="date" 
+                className="w-full bg-transparent border-none p-0 text-sm font-bold focus:ring-0"
+                value={formData.birth_date}
+                onChange={e => setFormData({...formData, birth_date: e.target.value})}
+              />
+            </InputBlock>
 
             <div className="grid grid-cols-2 gap-4">
-              <button 
-                type="button"
-                onClick={() => setGenero('masculino')}
-                className={`p-5 rounded-2xl font-black text-[10px] uppercase tracking-[0.2em] transition-all ${
-                  genero === 'masculino' 
-                  ? 'bg-[#2D3142] text-white shadow-lg scale-[1.02]' 
-                  : 'bg-[#FAF8F4] text-slate-400 hover:bg-slate-100'
-                }`}
-              >
-                Masculino
-              </button>
-              <button 
-                type="button"
-                onClick={() => setGenero('feminino')}
-                className={`p-5 rounded-2xl font-black text-[10px] uppercase tracking-[0.2em] transition-all ${
-                  genero === 'feminino' 
-                  ? 'bg-[#2D3142] text-white shadow-lg scale-[1.02]' 
-                  : 'bg-[#FAF8F4] text-slate-400 hover:bg-slate-100'
-                }`}
-              >
-                Feminino
-              </button>
+              <InputBlock label="Cidade" icon={<MapPin size={18}/>}>
+                <input 
+                  type="text" 
+                  placeholder="Ex: Rio de Janeiro"
+                  className="w-full bg-transparent border-none p-0 text-sm font-bold focus:ring-0"
+                  value={formData.city}
+                  onChange={e => setFormData({...formData, city: e.target.value})}
+                />
+              </InputBlock>
+              <InputBlock label="Tipo Sanguíneo" icon={<Heart size={18}/>}>
+                <select 
+                  className="w-full bg-transparent border-none p-0 text-sm font-bold focus:ring-0"
+                  value={formData.blood_type}
+                  onChange={e => setFormData({...formData, blood_type: e.target.value})}
+                >
+                  {['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'].map(t => <option key={t}>{t}</option>)}
+                </select>
+              </InputBlock>
             </div>
           </div>
-        </section>
 
-        {/* SEÇÃO 03: DADOS MÉDICOS VITAIS */}
-        <section className="space-y-5">
-          <div className="flex items-center gap-3 ml-4">
-            <Heart size={14} className="text-red-400" />
-            <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest text-slate-400">Saúde & Alerta</span>
-          </div>
-
-          <div className="bg-white p-8 rounded-[3rem] shadow-2xl shadow-slate-200/50 space-y-8 border border-white/50">
-            <div className="grid grid-cols-2 gap-6">
-              <div className="space-y-3">
-                <label className="text-[9px] font-black text-[#E8A87C] uppercase ml-2 tracking-widest flex items-center gap-2">
-                  <Droplets size={12} /> Sangue
-                </label>
-                <div className="relative">
-                  <select 
-                    className="w-full p-5 rounded-2xl bg-[#FAF8F4] border-2 border-transparent focus:border-[#E8A87C] outline-none font-black text-[#2D3142] appearance-none cursor-pointer"
-                    value={sangue}
-                    onChange={(e) => setSangue(e.target.value)}
-                  >
-                    <option value="">--</option>
-                    {['A', 'B', 'AB', 'O'].map(type => (
-                      <option key={type} value={type}>{type}</option>
-                    ))}
-                  </select>
-                  <div className="absolute right-5 top-1/2 -translate-y-1/2 pointer-events-none text-slate-300">
-                    <ChevronRight size={16} className="rotate-90" />
-                  </div>
-                </div>
-              </div>
-
-              <div className="space-y-3">
-                <label className="text-[9px] font-black text-[#E8A87C] uppercase ml-2 tracking-widest">Fator RH</label>
-                <div className="flex gap-2 p-1 bg-[#FAF8F4] rounded-[1.2rem]">
-                  {['+', '-'].map((type) => (
-                    <button
-                      key={type}
-                      type="button"
-                      onClick={() => setRh(type)}
-                      className={`flex-1 py-4 rounded-xl font-black text-lg transition-all ${
-                        rh === type 
-                        ? 'bg-white text-[#E8A87C] shadow-sm' 
-                        : 'text-slate-300 hover:text-slate-400'
-                      }`}
-                    >
-                      {type}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            </div>
-
-            <div className="space-y-3">
-              <label className="text-[9px] font-black text-slate-400 uppercase ml-2 tracking-widest flex items-center gap-2">
-                <ShieldAlert size={12} className="text-red-400" /> Observações Médicas Críticas
-              </label>
-              <textarea 
-                placeholder="Ex: Alergia a Dipirona, Hipertenso, usa marcapasso..."
-                className="w-full p-6 rounded-[2rem] bg-[#FAF8F4] border-2 border-transparent focus:border-[#E8A87C] focus:bg-white outline-none font-bold text-[#2D3142] text-sm leading-relaxed h-40 resize-none transition-all placeholder:text-slate-300"
-                value={obs}
-                onChange={(e) => setObs(e.target.value)}
-              />
-            </div>
-          </div>
-        </section>
-
-        {/* AÇÃO FINAL */}
-        <div className="pt-8 space-y-6">
           <button 
-            onClick={() => onNext({ nome, apelido, genero, sangue, rh, obs })}
-            className="w-full py-8 bg-[#2D3142] text-white rounded-[2.5rem] font-black text-[11px] uppercase tracking-[0.4em] flex items-center justify-center gap-4 shadow-2xl shadow-[#2D3142]/40 active:scale-95 transition-all group"
+            onClick={() => setStep(2)}
+            className="w-full py-6 bg-[#2D3142] text-white rounded-[2rem] font-black uppercase text-[10px] tracking-[0.2em] shadow-2xl flex items-center justify-center gap-3 active:scale-95 transition-all mt-8"
           >
-            Próximo Passo
-            <ChevronRight size={20} className="group-hover:translate-x-1 transition-transform" />
+            Próximo Passo <ChevronRight size={18} />
           </button>
-          
-          <div className="flex flex-col items-center gap-2 opacity-30">
-            <ShieldAlert size={16} className="text-[#2D3142]" />
-            <p className="text-[8px] font-black uppercase tracking-[0.2em] text-[#2D3142]">
-              Dados Protegidos pela Agência Inovare
-            </p>
+        </div>
+      ) : (
+        <div className="space-y-6 animate-in fade-in slide-in-from-right-4">
+          <InputBlock label="Mobilidade" icon={<Stethoscope size={18}/>}>
+            <select 
+              className="w-full bg-transparent border-none p-0 text-sm font-bold focus:ring-0"
+              value={formData.mobility}
+              onChange={e => setFormData({...formData, mobility: e.target.value})}
+            >
+              <option value="autonomous">Autônomo</option>
+              <option value="partial">Ajuda parcial</option>
+              <option value="wheelchair">Cadeira de Rodas</option>
+              <option value="bedridden">Acamado</option>
+            </select>
+          </InputBlock>
+
+          <InputBlock label="Plano de Saúde" icon={<Heart size={18}/>}>
+            <input 
+              type="text" 
+              placeholder="Nome do convênio..."
+              className="w-full bg-transparent border-none p-0 text-sm font-bold focus:ring-0"
+              value={formData.health_plan_name}
+              onChange={e => setFormData({...formData, health_plan_name: e.target.value})}
+            />
+          </InputBlock>
+
+          <div className="p-6 bg-white rounded-[2rem] shadow-sm border border-slate-50">
+            <h4 className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-4">Condições Crônicas</h4>
+            <div className="flex flex-wrap gap-2">
+              {['Diabetes', 'Hipertensão', 'Alzheimer', 'Cardíaco'].map(cond => (
+                <button
+                  key={cond}
+                  onClick={() => {
+                    const exists = formData.chronic_conditions.includes(cond);
+                    setFormData({
+                      ...formData,
+                      chronic_conditions: exists 
+                        ? formData.chronic_conditions.filter(c => c !== cond)
+                        : [...formData.chronic_conditions, cond]
+                    });
+                  }}
+                  className={`px-4 py-2 rounded-xl text-[10px] font-bold transition-all ${
+                    formData.chronic_conditions.includes(cond)
+                    ? 'bg-[#4A7FA5] text-white shadow-md'
+                    : 'bg-[#FAF8F4] text-slate-400'
+                  }`}
+                >
+                  {cond}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="flex gap-4 mt-8">
+            <button 
+              onClick={() => setStep(1)}
+              className="px-8 py-6 bg-white text-slate-400 rounded-[2rem] font-black uppercase text-[10px] tracking-widest border border-slate-100"
+            >
+              Voltar
+            </button>
+            <button 
+              onClick={handleRegister}
+              disabled={loading}
+              className="flex-1 py-6 bg-[#4A7FA5] text-white rounded-[2rem] font-black uppercase text-[10px] tracking-[0.2em] shadow-xl flex items-center justify-center gap-3 disabled:opacity-50"
+            >
+              {loading ? <Loader2 className="animate-spin" /> : 'Finalizar Cadastro'}
+            </button>
           </div>
         </div>
+      )}
+    </div>
+  );
+}
+
+// Sub-componente para inputs consistentes
+function InputBlock({ label, icon, children }: any) {
+  return (
+    <div className="bg-white p-5 rounded-[2rem] shadow-sm border border-slate-50 flex items-center gap-4 focus-within:ring-2 focus-within:ring-[#4A7FA5]/10 transition-all">
+      <div className="text-slate-200">{icon}</div>
+      <div className="flex-1">
+        <label className="block text-[9px] font-black uppercase tracking-widest text-slate-300 mb-1">{label}</label>
+        {children}
       </div>
     </div>
   );
+}
+
+function Plus({ size }: { size: number }) {
+  return <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>;
 }
