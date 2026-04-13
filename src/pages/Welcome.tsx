@@ -1,140 +1,106 @@
-import React, { useState } from 'react';
-import {
-  Heart,
-  Upload,
-  ChevronRight,
-  Home,
-  Calendar,
-  Users,
-  Star,
+import React, { useEffect, useState } from 'react';
+import { 
+  Heart, 
+  ArrowRight, 
+  ShieldCheck, 
+  Sparkles, 
+  CheckCircle2, 
+  Globe, 
+  ChevronRight 
 } from 'lucide-react';
 
 interface WelcomeProps {
-  onStart: () => void;
-  onLogoUpload: (url: string) => void;
+  onNext: () => void;
 }
 
-export default function Welcome({ onStart, onLogoUpload }: WelcomeProps) {
-  const [showModal, setShowModal] = useState(false);
-  const [localLogo, setLocalLogo] = useState<string | null>(null);
+export default function Welcome({ onNext }: WelcomeProps) {
+  const [isVisible, setIsVisible] = useState(false);
 
-  const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        const base64 = reader.result as string;
-        setLocalLogo(base64);
-        onLogoUpload(base64);
-      };
-      reader.readAsDataURL(file);
-    }
-  };
+  useEffect(() => {
+    setIsVisible(true);
+  }, []);
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-between p-6 bg-[#FAF8F4] font-sans text-center">
-      <div className="flex flex-col items-center mt-8 w-full">
-        {/* CONTAINER DA LOGO AJUSTADO PARA LEITURA */}
-        <div className="w-full max-w-[280px] h-32 border-2 border-dashed border-[#4A7FA5] rounded-2xl flex items-center justify-center mb-4 relative bg-white shadow-sm overflow-hidden cursor-pointer group">
-          {localLogo ? (
-            <img
-              src={localLogo}
-              alt="Logo JUNTO"
-              className="w-full h-full object-contain p-1" // 'p-1' para não esmagar a logo
-            />
-          ) : (
-            <label className="cursor-pointer flex flex-col items-center p-4">
-              <Upload className="text-[#4A7FA5] mb-2 w-8 h-8" />
-              <span className="text-[10px] text-[#4A7FA5] font-black uppercase tracking-widest">
-                Subir Logo do Notebook
-              </span>
-              <input
-                type="file"
-                hidden
-                onChange={handleLogoUpload}
-                accept="image/*"
-              />
-            </label>
-          )}
-        </div>
+    <div className="min-h-screen bg-[#FAF8F4] flex flex-col justify-between relative overflow-hidden font-sans">
+      {/* BACKGROUND LAYER: Design de Profundidade */}
+      <div className="absolute top-[-10%] right-[-10%] w-[80%] h-[40%] bg-gradient-to-br from-[#4A7FA5]/10 to-transparent rounded-full blur-[100px] animate-pulse" />
+      <div className="absolute bottom-[-5%] left-[-10%] w-[60%] h-[30%] bg-[#E8A87C]/5 rounded-full blur-[80px]" />
 
-        <h1 className="text-4xl font-black text-[#2D3142] tracking-tighter">
-          JUNTO
-        </h1>
-        <p className="text-[#4A7FA5] uppercase tracking-[0.3em] text-[10px] font-black">
-          Cuidar à distância, juntos.
-        </p>
-      </div>
-
-      <div className="w-full max-w-sm flex flex-col items-center gap-5">
-        <p className="text-[#6B7280] text-base leading-relaxed px-6 font-medium">
-          A central familiar para quem cuida de quem ama.
-        </p>
-        <button
-          onClick={onStart}
-          className="w-full bg-[#4A7FA5] text-white py-5 rounded-2xl text-lg font-bold shadow-xl flex items-center justify-center gap-2 active:scale-95 transition-transform"
-        >
-          Criar minha família <ChevronRight size={20} />
-        </button>
-        <button className="w-full bg-white text-[#4A7FA5] border-2 border-[#4A7FA5] py-5 rounded-2xl text-lg font-bold active:scale-95 transition-transform">
-          Já tenho conta — Entrar
-        </button>
-        <button
-          onClick={() => setShowModal(true)}
-          className="text-[#6B7280] underline text-xs font-bold uppercase tracking-widest"
-        >
-          Como funciona?
-        </button>
-      </div>
-
-      <div className="mb-6 flex items-center gap-2 text-[#E8A87C] font-bold">
-        <Heart size={14} fill="#E8A87C" />
-        <span className="text-[10px] uppercase tracking-widest">
-          Central Familiar de Cuidado
-        </span>
-      </div>
-
-      {showModal && (
-        <div className="fixed inset-0 bg-[#2D3142]/60 backdrop-blur-sm flex items-center justify-center p-6 z-50">
-          <div className="bg-[#FAF8F4] rounded-[2.5rem] p-8 max-w-sm w-full shadow-2xl">
-            <h2 className="text-[#2D3142] text-xl font-black mb-8 text-center uppercase tracking-widest">
-              O Plano JUNTO
-            </h2>
-            <div className="space-y-6">
-              <div className="flex gap-4 items-center">
-                <div className="bg-white p-3 rounded-2xl shadow-sm text-[#4A7FA5]">
-                  <Home size={24} />
-                </div>
-                <p className="text-[#6B7280] font-bold text-xs text-left">
-                  Crie o perfil do idoso e convide a família
-                </p>
-              </div>
-              <div className="flex gap-4 items-center">
-                <div className="bg-white p-3 rounded-2xl shadow-sm text-[#E8A87C]">
-                  <Calendar size={24} />
-                </div>
-                <p className="text-[#6B7280] font-bold text-xs text-left">
-                  Registre o dia a dia e consultas
-                </p>
-              </div>
-              <div className="flex gap-4 items-center">
-                <div className="bg-white p-3 rounded-2xl shadow-sm text-[#E8A87C]">
-                  <Star size={24} />
-                </div>
-                <p className="text-[#6B7280] font-bold text-xs text-left">
-                  IA resume o dia para todos às 21:30
-                </p>
-              </div>
-            </div>
-            <button
-              onClick={() => setShowModal(false)}
-              className="mt-10 w-full bg-[#E8A87C] text-white py-4 rounded-2xl font-black shadow-lg"
-            >
-              ENTENDI!
-            </button>
+      {/* HEADER: Branding de Impacto */}
+      <header className={`px-10 pt-24 transition-all duration-1000 transform ${isVisible ? 'translate-y-0 opacity-100' : 'translate-y-10 opacity-0'}`}>
+        <div className="relative inline-block mb-10">
+          <div className="w-24 h-24 bg-[#2D3142] rounded-[3rem] flex items-center justify-center text-white shadow-[0_25px_50px_rgba(45,49,66,0.3)] relative z-10">
+            <Heart size={44} fill="currentColor" className="text-[#4A7FA5]" />
+          </div>
+          <div className="absolute -top-2 -right-2 w-8 h-8 bg-[#E8A87C] rounded-full flex items-center justify-center text-white shadow-lg animate-bounce">
+            <Sparkles size={16} />
           </div>
         </div>
-      )}
+        
+        <div className="space-y-3">
+          <h1 className="text-[#2D3142] font-black text-7xl tracking-[-0.06em] italic leading-[0.8]">
+            JUNTO<span className="text-[#4A7FA5]">.</span>
+          </h1>
+          <div className="flex items-center gap-3">
+            <div className="h-[2px] w-8 bg-[#E8A87C]" />
+            <p className="text-[#4A7FA5] text-[10px] font-black uppercase tracking-[0.4em]">
+              Rede de Cuidado Inteligente
+            </p>
+          </div>
+        </div>
+      </header>
+
+      {/* BODY: Proposta de Valor Inovare */}
+      <main className={`px-10 space-y-8 transition-all duration-1000 delay-300 transform ${isVisible ? 'translate-y-0 opacity-100' : 'translate-y-10 opacity-0'}`}>
+        <div className="space-y-5">
+          <h2 className="text-[#2D3142] text-2xl font-black leading-[1.1] tracking-tight italic">
+            Monitoramento humanizado com <br/>
+            <span className="text-[#4A7FA5] not-italic">precisão digital.</span>
+          </h2>
+          
+          <div className="space-y-4">
+            <div className="flex items-center gap-4 bg-white/40 backdrop-blur-sm p-4 rounded-2xl border border-white/50 shadow-sm">
+              <div className="w-8 h-8 bg-[#4A7FA5]/10 rounded-xl flex items-center justify-center text-[#4A7FA5]">
+                <CheckCircle2 size={18} />
+              </div>
+              <p className="text-[#2D3142] text-xs font-bold opacity-80 uppercase tracking-tight">Gestão Financeira & Saúde</p>
+            </div>
+            
+            <div className="flex items-center gap-4 bg-white/40 backdrop-blur-sm p-4 rounded-2xl border border-white/50 shadow-sm">
+              <div className="w-8 h-8 bg-[#E8A87C]/10 rounded-xl flex items-center justify-center text-[#E8A87C]">
+                <Globe size={18} />
+              </div>
+              <p className="text-[#2D3142] text-xs font-bold opacity-80 uppercase tracking-tight">Conexão Familiar Global</p>
+            </div>
+          </div>
+        </div>
+      </main>
+
+      {/* FOOTER: Ação e Compliance */}
+      <footer className={`px-10 pb-16 space-y-10 transition-all duration-1000 delay-500 transform ${isVisible ? 'translate-y-0 opacity-100' : 'translate-y-10 opacity-0'}`}>
+        <div className="space-y-4">
+          <div className="flex items-center gap-3 text-slate-400">
+            <ShieldCheck size={16} />
+            <span className="text-[9px] font-black uppercase tracking-[0.2em]">Protocolo de Segurança Ativo</span>
+          </div>
+          
+          <button 
+            onClick={onNext}
+            className="group w-full bg-[#2D3142] text-white py-8 rounded-[2.5rem] font-black uppercase text-[11px] tracking-[0.3em] shadow-[0_30px_60px_rgba(45,49,66,0.35)] flex items-center justify-center gap-4 active:scale-95 transition-all overflow-hidden relative"
+          >
+            <span className="relative z-10">Iniciar Jornada</span>
+            <div className="bg-white/10 p-2 rounded-xl group-hover:bg-[#4A7FA5] transition-colors relative z-10">
+              <ArrowRight size={20} />
+            </div>
+            <div className="absolute top-0 left-[-100%] w-full h-full bg-gradient-to-r from-transparent via-white/5 to-transparent group-hover:left-[100%] transition-all duration-1000" />
+          </button>
+        </div>
+
+        <div className="flex flex-col items-center gap-2">
+          <p className="text-slate-300 text-[8px] font-black uppercase tracking-[0.6em]">Agência Inovare</p>
+          <div className="w-10 h-[1px] bg-slate-200" />
+        </div>
+      </footer>
     </div>
   );
 }
