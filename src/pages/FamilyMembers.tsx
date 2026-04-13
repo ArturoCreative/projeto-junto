@@ -1,211 +1,226 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { supabase } from '../supabase';
 import { 
-  ArrowLeft, 
-  Users, 
   UserPlus, 
-  Trash2, 
+  Users, 
+  Copy, 
+  Check, 
   ShieldCheck, 
-  ChevronRight, 
+  ChevronLeft,
   Plus,
-  Heart,
-  Search,
-  Info
+  X
 } from 'lucide-react';
 
-interface Member {
-  id: number;
-  nome: string;
-  papel: string;
-  nivel: 'admin' | 'membro';
+interface Props {
+  familyId: string;
+  onNext: () => void;
 }
 
-interface FamilyMembersProps {
-  membrosSalvos: Member[];
-  onBack: () => void;
-  onNext: (membros: Member[]) => void;
-}
+export default function FamilyMembers({ familyId, onNext }: Props) {
+  const [members, setMembers] = useState<any[]>([]);
+  const [inviteCode, setInviteCode] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [copied, setCopied] = useState(false);
 
-export default function FamilyMembers({ membrosSalvos, onBack, onNext }: FamilyMembersProps) {
-  const [membros, setMembros] = useState<Member[]>(membrosSalvos);
-  const [novoNome, setNovoNome] = useState('');
-  const [novoPapel, setNovoPapel] = useState('Filho(a)');
-  const [outroPapel, setOutroPapel] = useState('');
+  // Estados para o seletor de papel personalizado
+  const [isOther, setIsOther] = useState(false);
+  const [customRole, setCustomRole] = useState('');
 
-  const adicionarMembro = () => {
-    if (!novoNome.trim()) return;
-    
-    const papelFinal = novoPapel === 'Outros' ? outroPapel : novoPapel;
-    const novo: Member = {
-      id: Date.now(),
-      nome: novoNome,
-      papel: papelFinal || 'Apoio',
-      nivel: 'membro'
-    };
+  useEffect(() => {
+    if (familyId) {
+      fetchFamilyData();
+    }
+  }, [familyId]);
 
-    setMembros([...membros, novo]);
-    setNovoNome('');
-    setOutroPapel('');
-    setNovoPapel('Filho(a)');
+  async function fetchFamilyData() {
+    try {
+      setLoading(true);
+      
+      // 1. Buscar membros da família através dos perfis
+      const { data: profiles, error: profileError } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('family_id', familyId)
+        .order('role', { ascending: true });
+
+      if (profileError) throw profileError;
+      setMembers(profiles || []);
+
+      // 2. Buscar o código de convite da família
+      const { data: family, error: familyError } = await supabase
+        .from('families')
+        .select('invite_code')
+        .eq('id', familyId)
+        .single();
+
+      if (familyError) throw familyError;
+      setInviteCode(family.invite_code);
+
+    } catch (err) {
+      console.error("Erro ao carregar família:", err);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  const copyToClipboard = () => {
+    navigator.clipboard.writeText(inviteCode);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
   };
 
-  const removerMembro = (id: number) => {
-    setMembros(membros.filter(m => m.id !== id));
+  // Mapeamento de Roles para exibição
+  const getRoleLabel = (role: string, customLabel?: string) => {
+    if (role === 'other' && customLabel) return customLabel;
+    
+    const roles: any = {
+      admin: 'Administrador',
+      distant_child: 'Filho(a) à distância',
+      local_child: 'Filho(a) local',
+      spouse: 'Cônjuge',
+      caregiver: 'Cuidador(a)',
+      other: 'Outro'
+    };
+    return roles[role] || 'Membro';
   };
 
   return (
-    <div className="min-h-screen bg-[#FAF8F4] font-sans pb-32 overflow-x-hidden animate-in fade-in duration-700">
-      {/* DECORAÇÃO DE FUNDO */}
-      <div className="fixed -top-24 -left-24 w-64 h-64 bg-[#E8A87C]/5 rounded-full blur-3xl" />
-
-      <header className="relative p-8 pb-4 z-10">
-        <button 
-          onClick={() => { onNext(membros); onBack(); }}
-          className="mb-8 flex items-center text-[#4A7FA5] font-black uppercase text-[10px] tracking-[0.3em] group active:scale-95 transition-all"
-        >
-          <div className="w-10 h-10 rounded-full bg-white shadow-md shadow-slate-200/50 flex items-center justify-center mr-4 group-hover:bg-[#4A7FA5] group-hover:text-white transition-all">
-            <ArrowLeft size={16} />
+    <div className="min-h-full bg-[#FAF8F4] flex flex-col">
+      {/* Header Fixo */}
+      <header className="bg-white px-8 pt-16 pb-8 rounded-b-[3.5rem] shadow-sm">
+        <div className="flex justify-between items-center mb-6">
+          <h2 className="text-2xl font-black text-[#2D3142] tracking-tighter italic">
+            Sua <span className="text-[#4A7FA5]">Rede de Apoio</span>
+          </h2>
+          <div className="w-12 h-12 bg-[#FAF8F4] rounded-2xl flex items-center justify-center text-[#4A7FA5]">
+            <Users size={24} />
           </div>
-          Voltar
-        </button>
-
-        <div className="space-y-2">
-          <span className="bg-[#E8A87C]/10 text-[#E8A87C] px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-[0.2em]">
-            Passo 02 de 03
-          </span>
-          <h1 className="text-4xl font-black text-[#2D3142] tracking-tighter italic leading-[0.9]">
-            Rede de <span className="text-[#E8A87C]">Apoio</span>
-          </h1>
-          <p className="text-slate-400 text-sm font-bold leading-relaxed max-w-[280px] pt-3 flex items-center gap-2">
-            <Users size={14} className="text-[#4A7FA5] shrink-0" />
-            Adicione familiares e cuidadores ao círculo de cuidado.
-          </p>
         </div>
+        
+        <p className="text-slate-400 text-xs font-medium leading-relaxed max-w-[250px]">
+          Gerencie quem tem acesso aos cuidados e convide novos membros.
+        </p>
       </header>
 
-      <div className="relative px-8 mt-8 space-y-8 z-10">
-        {/* LISTAGEM DE MEMBROS */}
-        <div className="space-y-4">
-          <div className="flex justify-between items-center px-2">
-            <span className="text-[10px] font-black text-slate-300 uppercase tracking-widest">Membros Ativos</span>
-            <span className="text-[10px] font-black text-[#4A7FA5] bg-[#4A7FA5]/5 px-2 py-0.5 rounded-md">{membros.length} Pessoas</span>
+      <div className="p-8 space-y-8 flex-1">
+        {/* Card de Convite Robusto */}
+        <section className="bg-[#4A7FA5] rounded-[2.5rem] p-6 text-white shadow-xl shadow-[#4A7FA5]/20 relative overflow-hidden">
+          <div className="absolute -top-4 -right-4 opacity-10">
+            <UserPlus size={100} />
           </div>
           
-          <div className="space-y-3">
-            {membros.map((m) => (
-              <div 
-                key={m.id} 
-                className="bg-white p-5 rounded-[2.5rem] flex justify-between items-center shadow-xl shadow-slate-200/40 border border-white group animate-in slide-in-from-right-4 transition-all"
-              >
-                <div className="flex items-center gap-4">
-                  <div className={`w-14 h-14 rounded-[1.5rem] flex items-center justify-center shadow-inner ${
-                    m.nivel === 'admin' ? 'bg-[#2D3142] text-white' : 'bg-[#FAF8F4] text-[#4A7FA5]'
-                  }`}>
-                    {m.nivel === 'admin' ? <ShieldCheck size={24} /> : <Users size={24} />}
-                  </div>
-                  <div>
-                    <p className="font-black text-[#2D3142] text-md leading-none mb-1.5">{m.nome}</p>
-                    <div className="flex items-center gap-1.5">
-                      <div className="w-1.5 h-1.5 rounded-full bg-[#E8A87C]" />
-                      <p className="text-[10px] uppercase font-black text-[#E8A87C] tracking-widest">{m.papel}</p>
-                    </div>
-                  </div>
-                </div>
-                
-                {m.nivel !== 'admin' && (
-                  <button 
-                    onClick={() => removerMembro(m.id)}
-                    className="w-12 h-12 rounded-2xl flex items-center justify-center text-slate-200 hover:text-red-400 hover:bg-red-50 transition-all active:scale-90"
-                  >
-                    <Trash2 size={18} />
-                  </button>
-                )}
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* CARD DE ADIÇÃO (DESIGN COMPLETO) */}
-        <section className="space-y-5">
-          <div className="flex items-center gap-3 ml-4">
-            <UserPlus size={14} className="text-[#4A7FA5]" />
-            <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Novo Convidado</span>
-          </div>
-
-          <div className="bg-white p-8 rounded-[3rem] shadow-2xl shadow-slate-200/50 space-y-6 border-2 border-dashed border-slate-100 relative overflow-hidden">
-            <div className="space-y-2">
-              <label className="text-[9px] font-black text-[#4A7FA5] uppercase ml-2 tracking-widest">Nome do Familiar</label>
-              <input 
-                type="text"
-                placeholder="Ex: Maria Oliveira"
-                className="w-full p-5 rounded-2xl bg-[#FAF8F4] border-2 border-transparent focus:border-[#4A7FA5] focus:bg-white outline-none font-bold text-[#2D3142] transition-all"
-                value={novoNome}
-                onChange={(e) => setNovoNome(e.target.value)}
-              />
-            </div>
-
-            <div className="space-y-2">
-              <label className="text-[9px] font-black text-[#4A7FA5] uppercase ml-2 tracking-widest">Grau de Parentesco / Função</label>
-              <div className="relative">
-                <select 
-                  className="w-full p-5 rounded-2xl bg-[#FAF8F4] border-2 border-transparent focus:border-[#4A7FA5] outline-none font-black text-[#2D3142] appearance-none cursor-pointer"
-                  value={novoPapel}
-                  onChange={(e) => setNovoPapel(e.target.value)}
-                >
-                  <option value="Filho(a)">Filho(a)</option>
-                  <option value="Filho(a) Distante">Filho(a) Distante</option>
-                  <option value="Cônjuge">Cônjuge</option>
-                  <option value="Cuidador(a)">Cuidador(a)</option>
-                  <option value="Neto(a)">Neto(a)</option>
-                  <option value="Irmão/Irmã">Irmão/Irmã</option>
-                  <option value="Outros">Outros</option>
-                </select>
-                <div className="absolute right-5 top-1/2 -translate-y-1/2 pointer-events-none text-slate-300">
-                  <ChevronRight size={16} className="rotate-90" />
-                </div>
-              </div>
-            </div>
-
-            {novoPapel === 'Outros' && (
-              <div className="space-y-2 animate-in zoom-in-95 duration-300">
-                <label className="text-[9px] font-black text-[#E8A87C] uppercase ml-2 tracking-widest">Especifique o Vínculo</label>
-                <input 
-                  type="text"
-                  placeholder="Ex: Vizinho, Fisioterapeuta..."
-                  className="w-full p-5 rounded-2xl bg-white border-2 border-[#E8A87C] outline-none font-bold text-[#2D3142] shadow-inner"
-                  value={outroPapel}
-                  onChange={(e) => setOutroPapel(e.target.value)}
-                />
-              </div>
-            )}
-
+          <h3 className="text-[10px] font-black uppercase tracking-[0.2em] mb-4 opacity-80">Convidar Membro</h3>
+          <p className="text-sm font-medium mb-6 leading-relaxed">
+            Compartilhe o código abaixo para que outros familiares se conectem.
+          </p>
+          
+          <div className="flex items-center gap-3 bg-white/10 backdrop-blur-md rounded-2xl p-2 pl-6 border border-white/20">
+            <span className="flex-1 font-black tracking-[0.3em] text-lg uppercase select-all">
+              {inviteCode}
+            </span>
             <button 
-              onClick={adicionarMembro}
-              className="w-full py-5 bg-[#4A7FA5] text-white rounded-[1.5rem] font-black text-[10px] uppercase tracking-[0.2em] shadow-xl shadow-[#4A7FA5]/20 active:scale-95 transition-all flex items-center justify-center gap-3 group"
+              onClick={copyToClipboard}
+              className="w-12 h-12 bg-white text-[#4A7FA5] rounded-xl flex items-center justify-center transition-transform active:scale-90"
             >
-              <Plus size={18} className="group-hover:rotate-90 transition-transform" /> 
-              Adicionar à Rede
+              {copied ? <Check size={20} /> : <Copy size={20} />}
             </button>
           </div>
         </section>
 
-        {/* BOTÃO FINALIZAR */}
-        <div className="pt-8 space-y-6">
-          <button 
-            onClick={() => onNext(membros)}
-            className="w-full py-8 bg-[#2D3142] text-white rounded-[2.5rem] font-black text-[11px] uppercase tracking-[0.4em] flex items-center justify-center gap-4 shadow-2xl shadow-[#2D3142]/40 active:scale-95 transition-all group"
-          >
-            Concluir e Abrir Painel
-            <ChevronRight size={20} className="group-hover:translate-x-1 transition-transform" />
-          </button>
-          
-          <div className="flex flex-col items-center gap-2 opacity-20">
-            <Heart size={16} className="text-[#2D3142] fill-[#2D3142]" />
-            <p className="text-[8px] font-black uppercase tracking-[0.2em] text-[#2D3142]">
-              Juntos, cuidamos melhor
-            </p>
+        {/* Lógica de Papel Personalizado (Outro) */}
+        <section className="bg-white p-6 rounded-[2.5rem] shadow-sm border border-slate-50">
+          <label className="text-[9px] font-black uppercase tracking-widest text-slate-300 mb-4 block">
+            Definir seu papel nesta família
+          </label>
+          <div className="space-y-3">
+            <select 
+              className="w-full bg-[#FAF8F4] rounded-2xl p-4 text-sm font-bold border-none focus:ring-2 focus:ring-[#4A7FA5]/20 appearance-none"
+              onChange={(e) => {
+                const val = e.target.value;
+                setIsOther(val === 'other');
+                if (val !== 'other') setCustomRole('');
+              }}
+            >
+              <option value="distant_child">Filho(a) à distância</option>
+              <option value="local_child">Filho(a) local</option>
+              <option value="caregiver">Cuidador(a)</option>
+              <option value="spouse">Cônjuge</option>
+              <option value="other">Outro papel...</option>
+            </select>
+
+            {isOther && (
+              <div className="animate-in fade-in slide-in-from-top-2">
+                <div className="flex items-center gap-2 bg-[#FAF8F4] rounded-2xl p-2 pr-4 border-2 border-[#4A7FA5]/10">
+                  <input 
+                    type="text" 
+                    placeholder="Ex: Fisioterapeuta, Vizinho..."
+                    className="flex-1 bg-transparent border-none p-3 text-sm font-bold focus:ring-0"
+                    value={customRole}
+                    onChange={(e) => setCustomRole(e.target.value)}
+                  />
+                  {customRole && <Check size={16} className="text-[#4A7FA5]" />}
+                </div>
+                <p className="text-[9px] text-slate-400 mt-2 px-2 font-medium italic">
+                  * Este nome aparecerá nos seus registros da Timeline.
+                </p>
+              </div>
+            )}
           </div>
-        </div>
+        </section>
+
+        {/* Lista de Membros Ativos */}
+        <section>
+          <h3 className="text-[#2D3142] font-black text-xs uppercase tracking-widest mb-6 flex items-center gap-2 px-2">
+            Membros Ativos <span className="w-8 h-[1px] bg-slate-200" />
+          </h3>
+
+          <div className="space-y-4 pb-10">
+            {loading ? (
+              [1, 2].map(i => (
+                <div key={i} className="h-24 bg-white rounded-[2rem] animate-pulse" />
+              ))
+            ) : (
+              members.map((member) => (
+                <div key={member.id} className="bg-white p-5 rounded-[2.5rem] shadow-sm border border-slate-50 flex items-center gap-4">
+                  <div className="w-14 h-14 bg-[#FAF8F4] rounded-2xl overflow-hidden flex items-center justify-center border-2 border-white shadow-inner">
+                    {member.avatar_url ? (
+                      <img src={member.avatar_url} className="w-full h-full object-cover" alt="Avatar" />
+                    ) : (
+                      <div className="text-[#4A7FA5]/30 font-black text-xl italic">
+                        {member.full_name?.charAt(0)}
+                      </div>
+                    )}
+                  </div>
+                  
+                  <div className="flex-1">
+                    <h4 className="text-[#2D3142] font-black text-sm">{member.full_name}</h4>
+                    <p className="text-slate-400 text-[10px] font-bold uppercase tracking-widest mt-0.5">
+                      {getRoleLabel(member.role, member.custom_role)}
+                    </p>
+                  </div>
+
+                  {member.role === 'admin' && (
+                    <div className="px-3 py-1 bg-amber-50 text-amber-600 rounded-full flex items-center gap-1.5 border border-amber-100">
+                      <ShieldCheck size={10} />
+                      <span className="text-[8px] font-black uppercase tracking-tighter">Gestor</span>
+                    </div>
+                  )}
+                </div>
+              ))
+            )}
+          </div>
+        </section>
       </div>
+
+      {/* Footer Fixo */}
+      <footer className="p-8 bg-white/50 backdrop-blur-sm border-t border-slate-100 sticky bottom-0">
+        <button 
+          onClick={onNext}
+          className="w-full py-6 bg-[#2D3142] text-white rounded-[2rem] font-black uppercase text-[10px] tracking-[0.2em] shadow-xl flex items-center justify-center gap-3 active:scale-95 transition-all"
+        >
+          Acessar Painel <ChevronLeft size={18} className="rotate-180" />
+        </button>
+      </footer>
     </div>
   );
 }
