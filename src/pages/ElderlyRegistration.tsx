@@ -11,7 +11,8 @@ import {
   Sparkles,
   ShieldCheck,
   AlertCircle,
-  Activity
+  Activity,
+  Plus
 } from 'lucide-react';
 
 interface Props {
@@ -32,7 +33,6 @@ export default function ElderlyRegistration({ familyId, onNext }: Props) {
   });
 
   useEffect(() => {
-    // Gatilho de animação de entrada padrão Inovare
     const timer = setTimeout(() => setIsReady(true), 100);
     return () => clearTimeout(timer);
   }, []);
@@ -55,19 +55,17 @@ export default function ElderlyRegistration({ familyId, onNext }: Props) {
           full_name: formData.name, 
           nickname: formData.nickname, 
           birth_date: formData.birthDate,
-          medical_notes: formData.conditions // Campo extra para robustez
+          medical_notes: formData.conditions 
         }])
         .select()
         .single();
 
       if (insertError) throw insertError;
-      
-      // Feedback visual de sucesso antes de navegar
       setTimeout(() => onNext(data), 500);
       
     } catch (err: any) {
       console.error("Erro Crítico Cadastro Inovare:", err);
-      setError("Falha na comunicação com a nuvem. Verifique o Supabase.");
+      setError("Falha na comunicação com a nuvem.");
     } finally {
       setLoading(false);
     }
@@ -75,7 +73,7 @@ export default function ElderlyRegistration({ familyId, onNext }: Props) {
 
   return (
     <div className="min-h-screen bg-[#FAF8F4] flex flex-col font-sans relative overflow-hidden">
-      {/* Camada de Design de Fundo */}
+      {/* Camada de Design de Fundo - Agência Inovare */}
       <div className="absolute top-[-100px] right-[-50px] w-80 h-80 bg-[#4A7FA5]/5 rounded-full blur-[120px]" />
       <div className="absolute bottom-[-100px] left-[-50px] w-80 h-80 bg-[#E8A87C]/5 rounded-full blur-[120px]" />
 
@@ -103,11 +101,10 @@ export default function ElderlyRegistration({ familyId, onNext }: Props) {
         </div>
       </header>
 
-      {/* Formulário de Alta Densidade */}
-      <form onSubmit={handleSubmit} className={`flex-1 px-10 space-y-6 pb-20 transition-all duration-1000 delay-300 transform ${isReady ? 'translate-y-0 opacity-100' : 'translate-y-10 opacity-0'}`}>
-        
+      {/* Área do Formulário */}
+      <form onSubmit={handleSubmit} className={`flex-1 px-10 space-y-6 pb-40 transition-all duration-1000 delay-300 transform ${isReady ? 'translate-y-0 opacity-100' : 'translate-y-10 opacity-0'}`}>
         <div className="space-y-4">
-          {/* Bloco: Nome */}
+          {/* Nome */}
           <div className="group bg-white p-7 rounded-[3rem] shadow-sm border border-slate-100 focus-within:ring-8 focus-within:ring-[#4A7FA5]/5 transition-all">
             <label className="block text-[9px] font-black uppercase tracking-[0.25em] text-slate-300 mb-3 ml-2 italic">Nome Civil Completo</label>
             <div className="flex items-center gap-5">
@@ -124,7 +121,7 @@ export default function ElderlyRegistration({ familyId, onNext }: Props) {
             </div>
           </div>
 
-          {/* Bloco: Apelido */}
+          {/* Apelido */}
           <div className="group bg-white p-7 rounded-[3rem] shadow-sm border border-slate-100 focus-within:ring-8 focus-within:ring-amber-500/5 transition-all">
             <label className="block text-[9px] font-black uppercase tracking-[0.25em] text-slate-300 mb-3 ml-2 italic">Como prefere ser chamado?</label>
             <div className="flex items-center gap-5">
@@ -141,26 +138,24 @@ export default function ElderlyRegistration({ familyId, onNext }: Props) {
             </div>
           </div>
 
-          {/* Bloco: Data e Saúde */}
-          <div className="grid grid-cols-1 gap-4">
-            <div className="group bg-white p-7 rounded-[3rem] shadow-sm border border-slate-100 focus-within:ring-8 focus-within:ring-slate-100 transition-all">
-              <label className="block text-[9px] font-black uppercase tracking-[0.25em] text-slate-300 mb-3 ml-2 italic">Data de Nascimento</label>
-              <div className="flex items-center gap-5">
-                <div className="w-12 h-12 bg-[#FAF8F4] rounded-2xl flex items-center justify-center text-slate-400 group-focus-within:bg-[#2D3142] group-focus-within:text-white transition-all">
-                  <Calendar size={20} />
-                </div>
-                <input 
-                  type="date"
-                  className="bg-transparent border-none w-full text-[16px] font-black tracking-tight focus:ring-0 p-0 text-[#2D3142]"
-                  value={formData.birthDate} 
-                  onChange={e => setFormData({...formData, birthDate: e.target.value})}
-                />
+          {/* Data */}
+          <div className="group bg-white p-7 rounded-[3rem] shadow-sm border border-slate-100 focus-within:ring-8 focus-within:ring-slate-100 transition-all">
+            <label className="block text-[9px] font-black uppercase tracking-[0.25em] text-slate-300 mb-3 ml-2 italic">Data de Nascimento</label>
+            <div className="flex items-center gap-5">
+              <div className="w-12 h-12 bg-[#FAF8F4] rounded-2xl flex items-center justify-center text-slate-400 group-focus-within:bg-[#2D3142] group-focus-within:text-white transition-all">
+                <Calendar size={20} />
               </div>
+              <input 
+                type="date"
+                className="bg-transparent border-none w-full text-[16px] font-black tracking-tight focus:ring-0 p-0 text-[#2D3142]"
+                value={formData.birthDate} 
+                onChange={e => setFormData({...formData, birthDate: e.target.value})}
+              />
             </div>
           </div>
         </div>
 
-        {/* Notificação de Protocolo IA */}
+        {/* Notificação de Segurança */}
         <div className="bg-[#2D3142] p-8 rounded-[3rem] shadow-2xl relative overflow-hidden">
           <Activity className="absolute right-[-20px] top-[-20px] text-white/5" size={120} />
           <div className="flex items-start gap-5 relative z-10">
@@ -184,7 +179,7 @@ export default function ElderlyRegistration({ familyId, onNext }: Props) {
         )}
       </form>
 
-      {/* Footer de Ação */}
+      {/* Footer de Ação com tags revisadas */}
       <footer className={`p-10 fixed bottom-0 left-0 right-0 bg-gradient-to-t from-[#FAF8F4] via-[#FAF8F4] to-transparent pt-10 transition-all duration-1000 delay-500 ${isReady ? 'opacity-100' : 'opacity-0'}`}>
         <button 
           onClick={handleSubmit}
@@ -202,7 +197,7 @@ export default function ElderlyRegistration({ familyId, onNext }: Props) {
             </>
           )}
         </button>
-      </header>
+      </footer>
     </div>
   );
 }
