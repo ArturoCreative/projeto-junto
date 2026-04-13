@@ -1,285 +1,85 @@
 import React, { useState } from 'react';
-import {
-  Bell,
-  Settings,
-  ChevronRight,
-  Activity,
-  Calendar,
-  Users,
-  Heart,
-  DollarSign,
-  Home as HomeIcon,
-  Clock,
-  ShieldCheck,
-  Plus,
-  ArrowUpRight,
-  MoreVertical,
-} from 'lucide-react';
+import { Heart, DollarSign, Users, Bell, Settings, Plus, Search, Clock, MoreHorizontal, X, ChevronRight } from 'lucide-react';
 
-interface DashboardProps {
-  onNavigate: (screen: any) => void;
-  idoso: { nome: string; genero: string };
-  membros: any[];
-}
+export default function Dashboard({ idoso, familia, onNavigate }: any) {
+  const [modal, setModal] = useState<{open: boolean, title: string}>({ open: false, title: '' });
 
-export default function Dashboard({
-  onNavigate,
-  idoso,
-  membros,
-}: DashboardProps) {
-  const [showPlusMenu, setShowPlusMenu] = useState(false);
-
-  // DATA CONFIGURADA PARA HOJE
-  const dataHoje = '11 de Abril de 2026';
-
-  // LÓGICA DE GÊNERO DINÂMICA
-  const nomeExibicao = idoso.nome || 'Einstein';
-  const adjetivoStatus =
-    idoso.genero === 'masculino'
-      ? 'animado e sorridente'
-      : 'animada e sorridente';
+  const nomeExibicao = idoso?.apelido || idoso?.nome || "Idoso";
+  const fotoExibicao = idoso?.foto || null;
+  const iniciais = idoso?.nome ? idoso.nome.substring(0, 2).toUpperCase() : "ID";
 
   return (
-    <div className="min-h-screen bg-[#FAF8F4] font-sans pb-32 overflow-x-hidden">
-      {/* HEADER COMPLETO */}
-      <header className="p-8 pb-4 flex justify-between items-start animate-in fade-in duration-700">
-        <div>
-          <p className="text-[#4A7FA5] text-[10px] font-black uppercase tracking-[0.2em] mb-1">
-            {dataHoje}
-          </p>
-          <h1 className="text-3xl font-black text-[#2D3142] tracking-tighter italic">
-            Olá, Artur!
-          </h1>
-        </div>
-        <div className="flex gap-3">
-          <button className="p-4 bg-white rounded-2xl shadow-sm text-[#4A7FA5] hover:bg-slate-50 transition-colors">
-            <Bell size={20} />
-          </button>
-          <button className="p-4 bg-white rounded-2xl shadow-sm text-[#4A7FA5] hover:bg-slate-50 transition-colors">
-            <Settings size={20} />
-          </button>
-        </div>
-      </header>
-
-      <div className="px-8 space-y-6">
-        {/* CARD PRINCIPAL - STATUS DO IDOSO COM LÓGICA DE GÊNERO */}
-        <div className="bg-[#4A7FA5] p-8 rounded-[2.5rem] text-white shadow-2xl relative overflow-hidden group">
-          <div className="relative z-10">
-            <div className="flex items-center justify-between mb-6">
-              <div className="flex items-center gap-3">
-                <div className="w-12 h-12 bg-white/20 rounded-2xl flex items-center justify-center backdrop-blur-md border border-white/30">
-                  <Heart size={24} className="text-white" fill="white" />
-                </div>
-                <span className="font-bold text-sm opacity-90">
-                  {nomeExibicao} está bem
-                </span>
-              </div>
-              <div className="bg-white/10 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest border border-white/10">
-                IA Update
-              </div>
+    <div className="min-h-screen bg-[#FAF8F4] pb-40 animate-in fade-in duration-700">
+      {modal.open && (
+        <div className="fixed inset-0 z-[150] bg-black/60 backdrop-blur-sm flex items-center justify-center p-6">
+          <div className="bg-white w-full max-w-xs rounded-[2.5rem] p-8 shadow-2xl animate-in zoom-in duration-300">
+            <div className="flex justify-between items-center mb-6">
+              <h3 className="font-black text-[#2D3142] uppercase text-[10px] tracking-widest italic">{modal.title}</h3>
+              <button onClick={() => setModal({open: false, title: ''})} className="p-2 bg-slate-100 rounded-full"><X size={18}/></button>
             </div>
-
-            <h2 className="text-2xl font-black leading-tight mb-6 italic text-[#E8A87C]">
-              "{nomeExibicao} estava {adjetivoStatus} às 10:00 por João."
-            </h2>
-
-            <div className="flex items-center justify-between">
-              <button className="bg-white text-[#4A7FA5] py-3 px-6 rounded-2xl text-[10px] font-black uppercase tracking-widest flex items-center gap-2 shadow-lg active:scale-95 transition-transform">
-                Ver Relatório <ChevronRight size={14} />
-              </button>
-              <div className="flex -space-x-3">
-                {membros.slice(0, 3).map((m, i) => (
-                  <div
-                    key={i}
-                    className="w-8 h-8 rounded-full border-2 border-[#4A7FA5] bg-slate-200 flex items-center justify-center text-[10px] font-black text-[#4A7FA5]"
-                  >
-                    {m.nome.charAt(0)}
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-          {/* Grafismo de fundo */}
-          <Activity className="absolute -right-10 -bottom-10 w-48 h-48 text-white/5 rotate-12" />
-        </div>
-
-        {/* SEÇÃO DE AÇÕES RÁPIDAS */}
-        <div className="grid grid-cols-2 gap-4">
-          {/* DIÁRIO */}
-          <button
-            onClick={() => onNavigate('timeline')}
-            className="bg-white p-6 rounded-[2.3rem] shadow-sm text-left group active:scale-95 transition-all border-2 border-transparent hover:border-[#E8A87C]"
-          >
-            <div className="w-12 h-12 bg-[#FAF8F4] rounded-2xl flex items-center justify-center text-[#E8A87C] mb-4 group-hover:scale-110 transition-transform">
-              <Calendar size={22} />
-            </div>
-            <p className="font-black text-[#2D3142] text-sm tracking-tight">
-              Diário
-            </p>
-            <p className="text-[10px] text-slate-400 font-bold uppercase mt-1">
-              Linha do tempo
-            </p>
-          </button>
-
-          {/* SAÚDE */}
-          <button
-            onClick={() => onNavigate('health')}
-            className="bg-white p-6 rounded-[2.3rem] shadow-sm text-left group active:scale-95 transition-all border-2 border-transparent hover:border-[#4A7FA5]"
-          >
-            <div className="w-12 h-12 bg-[#FAF8F4] rounded-2xl flex items-center justify-center text-[#4A7FA5] mb-4 group-hover:scale-110 transition-transform">
-              <ShieldCheck size={22} />
-            </div>
-            <p className="font-black text-[#2D3142] text-sm tracking-tight">
-              Saúde
-            </p>
-            <p className="text-[10px] text-slate-400 font-bold uppercase mt-1">
-              Sinais Vitais
-            </p>
-          </button>
-
-          {/* FAMÍLIA */}
-          <button
-            onClick={() => onNavigate('family')}
-            className="bg-white p-6 rounded-[2.3rem] shadow-sm text-left group active:scale-95 transition-all border-2 border-transparent hover:border-[#4A7FA5]"
-          >
-            <div className="w-12 h-12 bg-[#FAF8F4] rounded-2xl flex items-center justify-center text-[#4A7FA5] mb-4 group-hover:scale-110 transition-transform">
-              <Users size={22} />
-            </div>
-            <p className="font-black text-[#2D3142] text-sm tracking-tight">
-              Família
-            </p>
-            <p className="text-[10px] text-slate-400 font-bold uppercase mt-1">
-              {membros.length} Membros
-            </p>
-          </button>
-
-          {/* FINANÇAS */}
-          <button
-            onClick={() => onNavigate('finance')}
-            className="bg-white p-6 rounded-[2.3rem] shadow-sm text-left group active:scale-95 transition-all border-2 border-transparent hover:border-[#E8A87C]"
-          >
-            <div className="w-12 h-12 bg-[#FAF8F4] rounded-2xl flex items-center justify-center text-[#E8A87C] mb-4 group-hover:scale-110 transition-transform">
-              <DollarSign size={22} />
-            </div>
-            <p className="font-black text-[#2D3142] text-sm tracking-tight">
-              Finanças
-            </p>
-            <p className="text-[10px] text-slate-400 font-bold uppercase mt-1">
-              Gastos do mês
-            </p>
-          </button>
-        </div>
-
-        {/* CARD DE ÚLTIMO REGISTRO COM OPÇÃO DE EDITAR */}
-        <div className="bg-white p-6 rounded-[2.5rem] shadow-sm border border-slate-100">
-          <div className="flex justify-between items-center mb-4">
-            <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
-              Última Atividade
-            </span>
-            <MoreVertical size={16} className="text-slate-300" />
-          </div>
-          <div className="flex items-center gap-4">
-            <div className="w-2 h-12 bg-[#E8A87C] rounded-full"></div>
-            <div className="flex-1">
-              <p className="font-bold text-[#2D3142] text-sm">
-                Almoço realizado
-              </p>
-              <p className="text-xs text-slate-400 font-medium">
-                Hoje, 12:30 • Por Ana (Cuidadora)
-              </p>
-            </div>
-            <button className="text-[#4A7FA5] font-black text-[10px] uppercase tracking-widest hover:underline">
-              Editar
-            </button>
-          </div>
-        </div>
-      </div>
-
-      {/* MENU FLUTUANTE DO BOTÃO + */}
-      {showPlusMenu && (
-        <div
-          className="fixed inset-0 bg-[#2D3142]/40 backdrop-blur-sm z-50 flex flex-col justify-end p-8 animate-in fade-in duration-300"
-          onClick={() => setShowPlusMenu(false)}
-        >
-          <div
-            className="bg-white rounded-[3rem] p-6 space-y-4 mb-24 animate-in slide-in-from-bottom-10"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <p className="text-center text-[10px] font-black text-[#4A7FA5] uppercase tracking-[0.3em] mb-4">
-              Novo Registro
-            </p>
-            <button
-              onClick={() => onNavigate('timeline')}
-              className="w-full p-5 bg-[#FAF8F4] rounded-2xl flex items-center justify-between font-bold text-[#2D3142]"
-            >
-              Registrar Rotina{' '}
-              <ArrowUpRight size={18} className="text-[#E8A87C]" />
-            </button>
-            <button
-              onClick={() => onNavigate('health')}
-              className="w-full p-5 bg-[#FAF8F4] rounded-2xl flex items-center justify-between font-bold text-[#2D3142]"
-            >
-              Sinal Vital / Saúde{' '}
-              <ArrowUpRight size={18} className="text-[#4A7FA5]" />
-            </button>
-            <button
-              onClick={() => onNavigate('finance')}
-              className="w-full p-5 bg-[#FAF8F4] rounded-2xl flex items-center justify-between font-bold text-[#2D3142]"
-            >
-              Gasto / Compra{' '}
-              <ArrowUpRight size={18} className="text-[#E8A87C]" />
-            </button>
+            <p className="text-slate-400 font-bold text-sm italic py-4 text-center">Acesso ao módulo {modal.title} habilitado.</p>
+            <button onClick={() => setModal({open: false, title: ''})} className="w-full py-4 bg-[#2D3142] text-white rounded-2xl font-black text-[10px] uppercase tracking-widest">Entendido</button>
           </div>
         </div>
       )}
 
-      {/* TAB BAR INFERIOR ESTILIZADA */}
-      <nav className="fixed bottom-0 left-0 right-0 bg-white/80 backdrop-blur-xl border-t border-slate-100 px-8 py-6 flex justify-between items-center z-40">
-        <button
-          onClick={() => onNavigate('dashboard')}
-          className="flex flex-col items-center gap-1 text-[#4A7FA5]"
-        >
-          <HomeIcon size={24} fill="currentColor" />
-          <span className="text-[9px] font-black uppercase tracking-widest">
-            Home
-          </span>
-        </button>
-        <button
-          onClick={() => onNavigate('timeline')}
-          className="flex flex-col items-center gap-1 text-slate-300 hover:text-[#4A7FA5]"
-        >
-          <Clock size={24} />
-          <span className="text-[9px] font-black uppercase tracking-widest">
-            Dia
-          </span>
-        </button>
-
-        {/* BOTÃO CENTRAL ATIVO */}
-        <div
-          onClick={() => setShowPlusMenu(true)}
-          className="bg-[#E8A87C] p-4 rounded-[2rem] shadow-lg shadow-[#E8A87C]/40 -mt-14 border-[6px] border-[#FAF8F4] active:scale-90 transition-transform cursor-pointer"
-        >
-          <Plus size={32} className="text-white" />
+      <header className="p-8 pb-4 flex justify-between items-center">
+        <div className="space-y-1">
+          <div className="flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" /><span className="text-[#4A7FA5] text-[10px] font-black uppercase tracking-[0.3em]">Sistema Ativo</span></div>
+          <h1 className="text-3xl font-black text-[#2D3142] tracking-tighter italic">Painel <span className="text-[#E8A87C]">Inovare</span></h1>
         </div>
+        <div className="flex items-center gap-3">
+          <button onClick={() => setModal({open: true, title: 'Busca'})} className="w-12 h-12 bg-white rounded-2xl shadow-xl flex items-center justify-center"><Search size={20} /></button>
+          <button onClick={() => setModal({open: true, title: 'Notificações'})} className="w-12 h-12 bg-white rounded-2xl shadow-xl flex items-center justify-center relative"><Bell size={20} /><span className="absolute top-3 right-3 w-2.5 h-2.5 bg-[#E8A87C] rounded-full" /></button>
+        </div>
+      </header>
 
-        <button
-          onClick={() => onNavigate('health')}
-          className="flex flex-col items-center gap-1 text-slate-300 hover:text-[#4A7FA5]"
-        >
-          <Heart size={24} />
-          <span className="text-[9px] font-black uppercase tracking-widest">
-            Saúde
-          </span>
-        </button>
-        <button
-          onClick={() => onNavigate('finance')}
-          className="flex flex-col items-center gap-1 text-slate-300 hover:text-[#4A7FA5]"
-        >
-          <DollarSign size={24} />
-          <span className="text-[9px] font-black uppercase tracking-widest">
-            Money
-          </span>
-        </button>
+      <div className="px-8 py-6">
+        <div className="bg-white p-8 rounded-[3.5rem] shadow-2xl border border-white relative overflow-hidden">
+          <div className="flex items-center gap-6 relative z-10">
+            <div className="w-20 h-20 rounded-[2rem] bg-slate-100 flex items-center justify-center text-[#4A7FA5] font-black text-xl italic border-4 border-[#FAF8F4] overflow-hidden shadow-inner">
+              {fotoExibicao ? <img src={fotoExibicao} alt="Perfil" className="w-full h-full object-cover" /> : iniciais}
+            </div>
+            <div><h2 className="text-2xl font-black text-[#2D3142] tracking-tight">{nomeExibicao}</h2><span className="bg-[#4A7FA5]/10 text-[#4A7FA5] px-3 py-1 rounded-full text-[9px] font-black uppercase">{idoso?.sangue || 'O'}{idoso?.rh || '+'}</span></div>
+          </div>
+          <div className="mt-8 pt-6 border-t border-slate-50 flex justify-between items-center">
+            <div className="space-y-1"><p className="text-[9px] font-black text-slate-300 uppercase tracking-widest">Observação Crítica</p><p className="text-[11px] font-bold text-[#2D3142] italic">{idoso?.obs || "Nenhum alerta para hoje."}</p></div>
+            <button onClick={() => setModal({open: true, title: 'Editar Obs.'})} className="w-10 h-10 bg-[#FAF8F4] rounded-xl flex items-center justify-center text-slate-400"><MoreHorizontal size={18} /></button>
+          </div>
+        </div>
+      </div>
+
+      <div className="px-8 flex gap-8 mb-6 overflow-x-auto no-scrollbar py-2">
+        {['hoje', 'agenda', 'relatórios', 'saúde'].map((tab) => (
+          <button key={tab} onClick={() => { if(tab === 'saúde') onNavigate('health'); else setModal({open: true, title: tab}); }} className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-300">{tab}</button>
+        ))}
+      </div>
+
+      <div className="px-8 space-y-10">
+        <section className="grid grid-cols-2 gap-6">
+          <div onClick={() => onNavigate('health')} className="bg-[#4A7FA5] p-8 rounded-[3rem] text-white shadow-2xl cursor-pointer active:scale-95 transition-all"><Heart size={24} className="mb-8 fill-white" /><p className="font-black italic">Saúde</p></div>
+          <div onClick={() => onNavigate('finance')} className="bg-white p-8 rounded-[3rem] text-[#2D3142] shadow-xl border border-white cursor-pointer active:scale-95 transition-all"><DollarSign size={24} className="mb-8 text-[#E8A87C]" /><p className="font-black italic">Finanças</p></div>
+        </section>
+
+        <section className="space-y-6">
+          <div className="flex justify-between items-end px-2">
+            <h3 className="text-lg font-black text-[#2D3142]">Atividades de Hoje</h3>
+            <button onClick={() => setModal({open: true, title: 'Nova Atividade'})} className="w-10 h-10 rounded-full bg-white shadow-md flex items-center justify-center text-[#4A7FA5]"><Plus size={18} /></button>
+          </div>
+          <div onClick={() => onNavigate('timeline')} className="bg-white p-6 rounded-[2.5rem] shadow-xl border border-white flex items-center gap-5 cursor-pointer hover:border-[#4A7FA5]/20 transition-all">
+            <div className="w-14 h-14 bg-[#FAF8F4] rounded-2xl flex flex-col items-center justify-center"><Clock size={18}/><span className="text-[7px] font-black">15:30</span></div>
+            <div className="flex-1 font-black text-[#2D3142] text-sm">Consulta Cardiologista</div>
+            <ChevronRight size={16} className="text-slate-200" />
+          </div>
+        </section>
+      </div>
+
+      <nav className="fixed bottom-8 left-8 right-8 z-50">
+        <div className="bg-[#2D3142] h-24 rounded-[3rem] shadow-2xl flex items-center justify-around px-6">
+          <button onClick={() => setModal({open: true, title: 'Configurações'})} className="p-4 text-white/40"><Settings size={22} /></button>
+          <button onClick={() => setModal({open: true, title: 'Acesso Rápido'})} className="p-6 bg-[#E8A87C] text-white rounded-[2rem] -translate-y-10 border-[6px] border-[#FAF8F4] active:scale-90 transition-all shadow-xl"><Plus size={28} /></button>
+          <button onClick={() => onNavigate('family')} className="p-4 text-white/40"><Users size={22} /></button>
+        </div>
       </nav>
     </div>
   );
